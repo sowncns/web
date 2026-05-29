@@ -18,7 +18,7 @@ type PayOSPayment = {
 };
 
 export function PaymentTopup({ balance }: { balance: number }) {
-  const [amount, setAmount] = useState(100000);
+  const [amount, setAmount] = useState(5000);
   const [opened, setOpened] = useState(false);
   const [tab, setTab] = useState<"qr" | "bank">("qr");
   const [loading, setLoading] = useState(false);

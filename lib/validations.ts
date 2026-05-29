@@ -29,7 +29,7 @@ export const createPaymentSchema = customerSchema.extend({
 });
 
 export const createTopupPaymentSchema = z.object({
-  amount: z.coerce.number().int().refine((value) => [100000, 250000, 500000, 1000000, 2000000, 5000000].includes(value), {
+  amount: z.coerce.number().int().refine((value) => [5000, 10000, 20000, 50000, 100000, 250000, 500000, 1000000, 2000000, 5000000].includes(value), {
     message: "Số tiền nạp không hợp lệ"
   })
 });
