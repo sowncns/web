@@ -18,6 +18,15 @@ export async function POST(request: Request) {
     const appUrl = process.env.APP_URL || "https://web-rouge-three-43.vercel.app";
     const description = `Nap tien ${orderCode}`.slice(0, 25);
 
+    const { data: topup, error: topupError } = await supabaseAdmin.from("wallet_topups").insert({
+      user_id: user.id,
+      amount: body.amount,
+      order_code: orderCode,
+      payment_status: "PENDING"
+    }).select("*").single();
+
+    if (topupError) throw new Error(`Không tạo được giao dịch nạp tiền: ${topupError.message}`);
+
     const paymentLink = await payOS.paymentRequests.create({
       orderCode,
       amount: body.amount,
@@ -30,19 +39,16 @@ export async function POST(request: Request) {
       items: [{ name: "Nap so du DigiLicense", quantity: 1, price: body.amount }]
     });
 
-    const { data: topup, error } = await supabaseAdmin.from("wallet_topups").insert({
-      user_id: user.id,
-      amount: body.amount,
-      order_code: orderCode,
-      payment_status: "PENDING",
+    const { error: updateError } = await supabaseAdmin.from("wallet_topups").update({
       checkout_url: paymentLink.checkoutUrl,
       qr_code: paymentLink.qrCode,
       account_number: paymentLink.accountNumber,
       account_name: paymentLink.accountName,
-      description: paymentLink.description
-    }).select("*").single();
+      description: paymentLink.description,
+      updated_at: new Date().toISOString()
+    }).eq("id", topup.id);
 
-    if (error) throw new Error(error.message);
+    if (updateError) throw new Error(`Đã tạo payOS nhưng không lưu được thông tin thanh toán: ${updateError.message}`);
 
     return NextResponse.json({
       topupId: topup.id,
