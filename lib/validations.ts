@@ -28,6 +28,11 @@ export const createPaymentSchema = customerSchema.extend({
   quantity: z.coerce.number().int().min(1).max(10)
 });
 
+export const balancePurchaseSchema = customerSchema.extend({
+  productId: z.string().uuid("Sản phẩm không hợp lệ"),
+  quantity: z.coerce.number().int().min(1).max(20)
+});
+
 export const createTopupPaymentSchema = z.object({
   amount: z.coerce.number().int().refine((value) => [50000, 100000, 250000, 500000, 1000000, 2000000, 5000000].includes(value), {
     message: "Số tiền nạp không hợp lệ"

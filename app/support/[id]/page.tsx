@@ -14,7 +14,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
     <div className="container-page py-10">
       <div className="rounded-lg border bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">{ticket.title}</h1>
+      <h1 className="text-2xl font-bold">{ticket.title}</h1>
           <OrderStatusBadge status={ticket.status} />
         </div>
         <p className="mt-2 whitespace-pre-line text-muted-foreground">{ticket.message}</p>

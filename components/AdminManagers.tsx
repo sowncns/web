@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -179,5 +180,123 @@ export function AdminTicketReply({ ticketId }: { ticketId: string }) {
       <label className="flex items-center gap-2 text-sm"><input name="close" type="checkbox" /> Đóng ticket</label>
       <Button>Gửi phản hồi</Button>
     </form>
+  );
+}
+
+export function ProductRowActions({ product, categories }: { product: any; categories: any[] }) {
+  const router = useRouter();
+
+  async function update(formData: FormData) {
+    try {
+      await send(`/api/admin/products/${product.id}`, "PATCH", {
+        name: formData.get("name"),
+        slug: formData.get("slug"),
+        category_id: formData.get("category_id") || null,
+        price: formData.get("price"),
+        duration: formData.get("duration"),
+        image_url: product.image_url || "",
+        description: product.description || "",
+        warranty_policy: product.warranty_policy || "",
+        delivery_guide: product.delivery_guide || "",
+        is_active: product.is_active
+      });
+      toast.success("Đã cập nhật sản phẩm");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không cập nhật được");
+    }
+  }
+
+  async function toggleActive() {
+    try {
+      await send(`/api/admin/products/${product.id}`, "PATCH", { is_active: !product.is_active });
+      toast.success(product.is_active ? "Đã ẩn sản phẩm" : "Đã hiện sản phẩm");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không cập nhật được");
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Xóa/ẩn sản phẩm này? Sản phẩm sẽ không hiển thị cho khách.")) return;
+    try {
+      await fetch(`/api/admin/products/${product.id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
+      });
+      toast.success("Đã ẩn sản phẩm");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không xóa được");
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <form action={update} className="grid min-w-[520px] gap-2 md:grid-cols-[1.2fr_1fr_1fr_.8fr_.8fr_auto]">
+        <Input name="name" defaultValue={product.name} />
+        <Input name="slug" defaultValue={product.slug} />
+        <select name="category_id" defaultValue={product.category_id || ""} className="h-9 rounded-md border-input text-sm">
+          <option value="">Không danh mục</option>
+          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+        </select>
+        <Input name="price" type="number" defaultValue={product.price} />
+        <Input name="duration" defaultValue={product.duration || ""} />
+        <Button size="sm"><Pencil className="h-4 w-4" /> Cập nhật</Button>
+      </form>
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={toggleActive}>
+          {product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {product.is_active ? "Ẩn sản phẩm" : "Hiện sản phẩm"}
+        </Button>
+        <Button type="button" variant="destructive" size="sm" onClick={remove}>
+          <Trash2 className="h-4 w-4" />
+          Xóa
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function CategoryRowActions({ category }: { category: any }) {
+  const router = useRouter();
+
+  async function update(formData: FormData) {
+    try {
+      await send(`/api/admin/categories/${category.id}`, "PATCH", {
+        name: formData.get("name"),
+        slug: formData.get("slug")
+      });
+      toast.success("Đã cập nhật danh mục");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không cập nhật được");
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Xóa danh mục này? Sản phẩm thuộc danh mục sẽ được bỏ danh mục.")) return;
+    try {
+      await fetch(`/api/admin/categories/${category.id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
+      });
+      toast.success("Đã xóa danh mục");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không xóa được");
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <form action={update} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <Input name="name" defaultValue={category.name} />
+        <Input name="slug" defaultValue={category.slug} />
+        <Button size="sm"><Pencil className="h-4 w-4" /> Cập nhật</Button>
+      </form>
+      <Button type="button" variant="destructive" size="sm" onClick={remove}>
+        <Trash2 className="h-4 w-4" />
+        Xóa danh mục
+      </Button>
+    </div>
   );
 }

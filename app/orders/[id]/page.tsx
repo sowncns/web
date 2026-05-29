@@ -15,7 +15,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const { data: order } = await supabase.from("orders").select("*, products(name,slug)").eq("id", params.id).eq("user_id", user.id).single();
   if (!order) notFound();
   const canView = order.payment_status === "PAID" && order.order_status === "COMPLETED";
-  const delivery = canView ? {
+  const { data: deliveryRows = [] } = canView ? await supabase.from("order_deliveries").select("*").eq("order_id", order.id).order("created_at") : { data: [] };
+  const deliveries = (deliveryRows || []).map((row: any) => ({
+    username: decryptText(row.username_encrypted),
+    password: decryptText(row.password_encrypted),
+    note: decryptText(row.note_encrypted)
+  }));
+  const legacyDelivery = canView && !deliveries.length ? {
     username: decryptText(order.delivery_username_encrypted),
     password: decryptText(order.delivery_password_encrypted),
     note: decryptText(order.delivery_note_encrypted)
@@ -25,7 +31,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     <div className="container-page py-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-3xl font-bold">Đơn hàng #{order.order_code}</h1><p className="text-muted-foreground">{formatDate(order.created_at)}</p></div>
-        <Button asChild><Link href={`/support?orderId=${order.id}`}>Tạo ticket</Link></Button>
+        <Button asChild><Link href={`/support?orderId=${order.id}`}>Cần hỗ trợ</Link></Button>
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
         <Card>
@@ -40,12 +46,17 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         <Card>
           <CardHeader><CardTitle>Tài khoản đã mua</CardTitle></CardHeader>
           <CardContent>
-            {delivery ? (
-              <div className="space-y-3 text-sm">
-                <p>Tài khoản: <strong>{delivery.username}</strong></p>
-                <p>Mật khẩu: <strong>{delivery.password}</strong></p>
-                <p>Ghi chú: {delivery.note || "Không có"}</p>
-                <div className="flex flex-wrap gap-2"><CopyButton value={delivery.username} label="tài khoản" /><CopyButton value={delivery.password} label="mật khẩu" /></div>
+            {deliveries.length || legacyDelivery ? (
+              <div className="space-y-4 text-sm">
+                {(deliveries.length ? deliveries : [legacyDelivery]).map((delivery: any, index: number) => (
+                  <div key={`${delivery.username}-${index}`} className="rounded-md border bg-slate-50 p-3">
+                    <p className="font-semibold">Tài khoản #{index + 1}</p>
+                    <p className="mt-2">Tài khoản: <strong>{delivery.username}</strong></p>
+                    <p>Mật khẩu: <strong>{delivery.password}</strong></p>
+                    <p>Ghi chú: {delivery.note || "Không có"}</p>
+                    <div className="mt-3 flex flex-wrap gap-2"><CopyButton value={delivery.username} label="tài khoản" /><CopyButton value={delivery.password} label="mật khẩu" /></div>
+                  </div>
+                ))}
               </div>
             ) : order.payment_status === "PAID" && order.order_status === "PROCESSING" ? (
               <p className="text-sm text-muted-foreground">Đơn hàng của bạn đang được xử lý. Vui lòng chờ admin cấp tài khoản.</p>

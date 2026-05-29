@@ -3,9 +3,12 @@ import { AlertTriangle, CreditCard, Headphones, ShieldCheck, Wallet, Zap } from 
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/ProductGrid";
 import { createClient } from "@/lib/supabase/server";
+import { formatCurrency } from "@/lib/utils";
 
 export default async function HomePage() {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user ? await supabase.from("profiles").select("balance").eq("id", user.id).single() : { data: null };
   const { data: productsData } = await supabase.from("products").select("*").eq("is_active", true).limit(8);
   const products = productsData ?? [];
   const categories = ["CapCut", "Canva", "AI Tools", "Streaming", "Game", "Office"];
@@ -29,16 +32,14 @@ export default async function HomePage() {
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-md bg-blue-50 text-primary"><Wallet className="h-5 w-5" /></div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Thanh toán</p>
-                  <p className="text-lg font-bold text-slate-950">payOS tự động</p>
+                  <p className="text-xs text-muted-foreground">Nạp tiền</p>
+                  <p className="text-lg font-bold text-slate-950">Số dư hiện tại</p>
+                  <p className="text-sm font-semibold text-primary">{formatCurrency(Number(profile?.balance || 0))}</p>
                 </div>
               </div>
-              <Button asChild><Link href="/products">Mua ngay</Link></Button>
+              <Button asChild><Link href="/payment">Nạp tiền</Link></Button>
             </div>
           </div>
-        </div>
-        <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">
-          Hướng dẫn sử dụng: mua gói, thanh toán qua payOS, admin hoàn tất đơn, sau đó tài khoản/mật khẩu hiển thị trong chi tiết đơn hàng.
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {categories.map((name) => (

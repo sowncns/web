@@ -21,7 +21,7 @@ export function ProductFilter({ categories }: { categories: { id: string; name: 
   }
 
   return (
-    <form action={update} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[1fr_180px_180px_auto]">
+    <form action={update} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[1fr_180px_180px_auto]">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input name="search" defaultValue={params.get("search") || ""} placeholder="Tìm theo tên sản phẩm" className="pl-9" />

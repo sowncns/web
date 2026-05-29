@@ -12,9 +12,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const { data: order, error } = await query.single();
   if (error || !order) return NextResponse.json({ error: "Không tìm thấy đơn hàng" }, { status: 404 });
   const canViewDelivery = order.payment_status === "PAID" && order.order_status === "COMPLETED";
+  const { data: deliveryRows = [] } = canViewDelivery ? await supabase.from("order_deliveries").select("*").eq("order_id", order.id).order("created_at") : { data: [] };
+  const deliveries = (deliveryRows || []).map((row: any) => ({
+    username: decryptText(row.username_encrypted),
+    password: decryptText(row.password_encrypted),
+    note: decryptText(row.note_encrypted)
+  }));
   return NextResponse.json({
     ...order,
-    delivery: canViewDelivery ? {
+    deliveries,
+    delivery: canViewDelivery && !deliveries.length ? {
       username: decryptText(order.delivery_username_encrypted),
       password: decryptText(order.delivery_password_encrypted),
       note: decryptText(order.delivery_note_encrypted)

@@ -55,7 +55,7 @@ export function PaymentTopup({ balance }: { balance: number }) {
   return (
     <div className="container-page py-5">
       <div className="mb-5">
-        <h1 className="text-xl font-bold tracking-normal text-slate-950">Thanh toán</h1>
+        <h1 className="text-xl font-bold tracking-normal text-slate-950">Nạp tiền</h1>
         <p className="mt-4 text-sm text-muted-foreground">Quản lý số dư và thanh toán của bạn</p>
         <Button variant="outline" size="sm" className="mt-4">
           <History className="h-4 w-4" />

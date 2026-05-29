@@ -14,28 +14,33 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const admin = await isAdminRequest();
-  if (!admin.ok) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
-  const json = await request.json();
-  const rows = [];
-  if (json.lines) {
-    const body = stockImportSchema.parse(json);
-    for (const line of body.lines.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)) {
-      const [username, password, note = ""] = line.split("|");
-      if (username && password) rows.push({ product_id: body.product_id, username, password, note, duration: body.duration });
+  try {
+    const admin = await isAdminRequest();
+    if (!admin.ok) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
+    const json = await request.json();
+    const rows = [];
+    if (json.lines) {
+      const body = stockImportSchema.parse(json);
+      for (const line of body.lines.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)) {
+        const [username, password, note = ""] = line.split("|");
+        if (username && password) rows.push({ product_id: body.product_id, username, password, note, duration: body.duration });
+      }
+    } else {
+      rows.push(stockSchema.parse(json));
     }
-  } else {
-    rows.push(stockSchema.parse(json));
+    if (!rows.length) return NextResponse.json({ error: "Không có dòng tài khoản hợp lệ" }, { status: 400 });
+    const encryptedRows = rows.map((row) => ({
+      product_id: row.product_id,
+      username_encrypted: encryptText(row.username),
+      password_encrypted: encryptText(row.password),
+      note_encrypted: encryptText(row.note),
+      duration: row.duration,
+      status: "AVAILABLE"
+    }));
+    const { data, error } = await supabaseAdmin.from("stock_items").insert(encryptedRows).select("id");
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Không thêm được kho tài khoản" }, { status: 400 });
   }
-  const encryptedRows = rows.map((row) => ({
-    product_id: row.product_id,
-    username_encrypted: encryptText(row.username),
-    password_encrypted: encryptText(row.password),
-    note_encrypted: encryptText(row.note),
-    duration: row.duration,
-    status: "AVAILABLE"
-  }));
-  const { data, error } = await supabaseAdmin.from("stock_items").insert(encryptedRows).select("id");
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json(data);
 }

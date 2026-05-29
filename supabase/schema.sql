@@ -72,6 +72,15 @@ create table if not exists public.orders (
   updated_at timestamptz default now()
 );
 
+create table if not exists public.order_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid references public.orders(id) on delete cascade,
+  username_encrypted text not null,
+  password_encrypted text not null,
+  note_encrypted text,
+  created_at timestamptz default now()
+);
+
 do $$
 begin
   if not exists (
@@ -175,6 +184,10 @@ security definer
 set search_path = public
 as $$
 begin
+  if current_user in ('postgres', 'supabase_admin', 'service_role') then
+    return new;
+  end if;
+
   if not public.is_admin() and (new.role is distinct from old.role or new.status is distinct from old.status) then
     raise exception 'Không được tự cập nhật role/status';
   end if;
@@ -220,6 +233,106 @@ begin
 end;
 $$;
 
+create or replace function public.purchase_product_with_balance(
+  p_user_id uuid,
+  p_product_id uuid,
+  p_quantity integer,
+  p_customer_name text,
+  p_customer_email text,
+  p_customer_phone text,
+  p_note text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_product public.products;
+  v_profile public.profiles;
+  v_total numeric;
+  v_order public.orders;
+  v_order_code bigint;
+begin
+  if p_quantity < 1 or p_quantity > 20 then
+    raise exception 'Số lượng không hợp lệ';
+  end if;
+
+  select * into v_profile
+  from public.profiles
+  where id = p_user_id
+  for update;
+
+  if not found then
+    raise exception 'Không tìm thấy tài khoản';
+  end if;
+
+  if v_profile.status <> 'ACTIVE' then
+    raise exception 'Tài khoản đã bị khóa';
+  end if;
+
+  select * into v_product
+  from public.products
+  where id = p_product_id and is_active = true;
+
+  if not found then
+    raise exception 'Sản phẩm không khả dụng';
+  end if;
+
+  v_total := v_product.price * p_quantity;
+
+  if coalesce(v_profile.balance, 0) < v_total then
+    raise exception 'Số dư không đủ';
+  end if;
+
+  update public.profiles
+  set balance = balance - v_total,
+      updated_at = now()
+  where id = p_user_id;
+
+  v_order_code := floor(extract(epoch from clock_timestamp()) * 1000)::bigint + floor(random() * 900 + 100)::bigint;
+
+  insert into public.orders (
+    user_id,
+    customer_name,
+    customer_email,
+    customer_phone,
+    product_id,
+    quantity,
+    total_amount,
+    order_code,
+    payment_provider,
+    payment_status,
+    order_status,
+    note,
+    paid_at
+  )
+  values (
+    p_user_id,
+    p_customer_name,
+    p_customer_email,
+    p_customer_phone,
+    p_product_id,
+    p_quantity,
+    v_total,
+    v_order_code,
+    'BALANCE',
+    'PAID',
+    'PROCESSING',
+    p_note,
+    now()
+  )
+  returning * into v_order;
+
+  return jsonb_build_object(
+    'orderId', v_order.id,
+    'orderCode', v_order.order_code,
+    'totalAmount', v_order.total_amount,
+    'balance', coalesce(v_profile.balance, 0) - v_total
+  );
+end;
+$$;
+
 drop trigger if exists prevent_profile_privilege_update_trigger on public.profiles;
 create trigger prevent_profile_privilege_update_trigger
 before update on public.profiles
@@ -230,6 +343,7 @@ alter table public.categories enable row level security;
 alter table public.products enable row level security;
 alter table public.stock_items enable row level security;
 alter table public.orders enable row level security;
+alter table public.order_deliveries enable row level security;
 alter table public.wallet_topups enable row level security;
 alter table public.payment_logs enable row level security;
 alter table public.support_tickets enable row level security;
@@ -264,6 +378,19 @@ create policy "orders_user_insert" on public.orders for insert with check (auth.
 drop policy if exists "orders_admin_all" on public.orders;
 create policy "orders_admin_all" on public.orders for all using (public.is_admin()) with check (public.is_admin());
 
+drop policy if exists "order_deliveries_user_select" on public.order_deliveries;
+create policy "order_deliveries_user_select" on public.order_deliveries for select using (
+  exists (
+    select 1 from public.orders o
+    where o.id = order_id
+      and o.user_id = auth.uid()
+      and o.payment_status = 'PAID'
+      and o.order_status = 'COMPLETED'
+  )
+);
+drop policy if exists "order_deliveries_admin_all" on public.order_deliveries;
+create policy "order_deliveries_admin_all" on public.order_deliveries for all using (public.is_admin()) with check (public.is_admin());
+
 drop policy if exists "wallet_topups_user_select" on public.wallet_topups;
 create policy "wallet_topups_user_select" on public.wallet_topups for select using (auth.uid() = user_id);
 drop policy if exists "wallet_topups_user_insert" on public.wallet_topups;
@@ -293,6 +420,7 @@ create policy "ticket_replies_admin_all" on public.ticket_replies for all using 
 create index if not exists products_slug_idx on public.products(slug);
 create index if not exists orders_user_id_idx on public.orders(user_id);
 create index if not exists orders_order_code_idx on public.orders(order_code);
+create index if not exists order_deliveries_order_id_idx on public.order_deliveries(order_id);
 create index if not exists wallet_topups_user_id_idx on public.wallet_topups(user_id);
 create index if not exists wallet_topups_order_code_idx on public.wallet_topups(order_code);
 create index if not exists stock_items_product_status_idx on public.stock_items(product_id, status);

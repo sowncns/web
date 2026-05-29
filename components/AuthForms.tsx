@@ -81,12 +81,6 @@ export function RegisterForm() {
       setLoading(false);
       return;
     }
-    await supabase.from("profiles").upsert({
-      id: data.user.id,
-      email: parsed.data.email,
-      full_name: parsed.data.fullName,
-      phone: parsed.data.phone
-    });
     setLoading(false);
     if (!data.session) {
       toast.success("Vui lòng kiểm tra email để xác nhận tài khoản");
