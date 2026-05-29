@@ -8,15 +8,49 @@ import { formatCurrency } from "@/lib/utils";
 
 const amounts = [100000, 250000, 500000, 1000000, 2000000, 5000000];
 
-export function PaymentTopup() {
+type PayOSPayment = {
+  qrCode?: string;
+  accountNumber?: string;
+  accountName?: string;
+  amount?: number;
+  description?: string;
+  bin?: string;
+};
+
+export function PaymentTopup({ balance }: { balance: number }) {
   const [amount, setAmount] = useState(100000);
   const [opened, setOpened] = useState(false);
   const [tab, setTab] = useState<"qr" | "bank">("qr");
-  const transferContent = `DL${Date.now().toString().slice(-10)}`;
+  const [loading, setLoading] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [payment, setPayment] = useState<PayOSPayment | null>(null);
 
   async function copy(value: string | number) {
     await navigator.clipboard.writeText(String(value));
     toast.success("Đã sao chép");
+  }
+
+  async function createTopup() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/payment/payos/topup/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không tạo được thanh toán");
+      setPayment(data.payment);
+      setCheckoutUrl(data.checkoutUrl);
+      setOpened(true);
+      setTab("qr");
+      window.open(data.checkoutUrl, "payos_checkout", "width=520,height=760");
+      toast.success("Đã tạo thanh toán payOS");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không tạo được thanh toán");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -37,7 +71,7 @@ export function PaymentTopup() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Số dư hiện tại</p>
-            <p className="text-2xl font-bold text-slate-950">51,000 VNĐ</p>
+            <p className="text-2xl font-bold text-slate-950">{formatCurrency(balance)}</p>
           </div>
         </div>
       </section>
@@ -73,9 +107,9 @@ export function PaymentTopup() {
             </div>
           </div>
 
-          <Button className="h-11 w-full" onClick={() => setOpened(true)}>
+          <Button className="h-11 w-full" onClick={createTopup} disabled={loading}>
             <CreditCard className="h-4 w-4" />
-            Nạp {formatCurrency(amount)}
+            {loading ? "Đang tạo thanh toán..." : `Nạp ${formatCurrency(amount)}`}
           </Button>
 
           {opened ? (
@@ -85,7 +119,7 @@ export function PaymentTopup() {
               </div>
               <div className="text-center text-sm text-slate-600">
                 <p>Vui lòng hoàn thành thanh toán trong cửa sổ bên dưới.</p>
-                <p>Nếu cửa sổ không tự động mở, <button className="font-medium text-primary" type="button">nhấn vào đây</button>.</p>
+                <p>Nếu cửa sổ không tự động mở, <a className="font-medium text-primary" href={checkoutUrl} target="_blank" rel="noreferrer">nhấn vào đây</a>.</p>
               </div>
             </div>
           ) : null}
@@ -115,10 +149,12 @@ export function PaymentTopup() {
 
           {tab === "qr" ? (
             <div className="flex min-h-80 flex-col items-center justify-center gap-3">
-              <div className="grid h-52 w-52 place-items-center border-4 border-slate-900 bg-white text-center text-xs font-semibold text-slate-500">
-                QR payOS/VietQR
-              </div>
-              <p className="text-xs text-muted-foreground">Quét mã QR bằng app ngân hàng để thanh toán {formatCurrency(amount)}.</p>
+              {payment?.qrCode ? (
+                <img src={payment.qrCode} alt="Mã QR payOS" className="h-52 w-52 object-contain" />
+              ) : (
+                <div className="grid h-52 w-52 place-items-center border-4 border-slate-900 bg-white text-center text-xs font-semibold text-slate-500">Đang tải QR</div>
+              )}
+              <p className="text-xs text-muted-foreground">Quét mã QR bằng app ngân hàng để thanh toán {formatCurrency(payment?.amount || amount)}.</p>
             </div>
           ) : (
             <div className="mx-auto max-w-md pt-5">
@@ -130,29 +166,29 @@ export function PaymentTopup() {
                   <div className="grid grid-cols-[1fr_auto] gap-3">
                     <div>
                       <p className="text-muted-foreground">Số tài khoản:</p>
-                      <p className="mt-1 text-base font-bold text-slate-950">VQRQAJIJOO540</p>
+                      <p className="mt-1 text-base font-bold text-slate-950">{payment?.accountNumber || "-"}</p>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => copy("VQRQAJIJOO540")}>Sao chép</Button>
+                    <Button variant="secondary" size="sm" onClick={() => copy(payment?.accountNumber || "")}>Sao chép</Button>
                   </div>
                   <div className="grid grid-cols-[1fr_auto] gap-3">
                     <div>
                       <p className="text-muted-foreground">Số tiền:</p>
-                      <p className="mt-1 text-base font-bold text-slate-950">{formatCurrency(amount)}</p>
+                      <p className="mt-1 text-base font-bold text-slate-950">{formatCurrency(payment?.amount || amount)}</p>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => copy(amount)}>Sao chép</Button>
+                    <Button variant="secondary" size="sm" onClick={() => copy(payment?.amount || amount)}>Sao chép</Button>
                   </div>
                   <div className="grid grid-cols-[1fr_auto] gap-3">
                     <div>
                       <p className="text-muted-foreground">Nội dung:</p>
-                      <p className="mt-1 text-base font-bold text-slate-950">{transferContent}</p>
+                      <p className="mt-1 text-base font-bold text-slate-950">{payment?.description || "-"}</p>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => copy(transferContent)}>Sao chép</Button>
+                    <Button variant="secondary" size="sm" onClick={() => copy(payment?.description || "")}>Sao chép</Button>
                   </div>
                 </div>
 
                 <div className="mt-4 rounded-md border border-red-100 bg-slate-100 p-3 text-sm">
                   <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-red-500 text-xs font-bold text-white">!</span>
-                  Lưu ý: Nhập chính xác số tiền <strong>{formatCurrency(amount)}</strong> khi chuyển khoản
+                  Lưu ý: Nhập chính xác số tiền <strong>{formatCurrency(payment?.amount || amount)}</strong> khi chuyển khoản
                 </div>
               </div>
             </div>

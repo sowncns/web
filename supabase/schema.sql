@@ -5,11 +5,14 @@ create table if not exists public.profiles (
   email text,
   full_name text,
   phone text,
+  balance numeric default 0 not null,
   role text default 'USER' check (role in ('USER', 'ADMIN')),
   status text default 'ACTIVE' check (status in ('ACTIVE', 'BANNED')),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.profiles add column if not exists balance numeric default 0 not null;
 
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
@@ -81,10 +84,39 @@ end $$;
 create table if not exists public.payment_logs (
   id uuid primary key default gen_random_uuid(),
   order_id uuid references public.orders(id) on delete cascade,
+  topup_id uuid,
   provider text,
   raw_data jsonb,
   created_at timestamptz default now()
 );
+
+create table if not exists public.wallet_topups (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  amount numeric not null,
+  order_code bigint unique not null,
+  payment_provider text default 'PAYOS',
+  payment_status text default 'PENDING' check (payment_status in ('PENDING', 'PAID', 'CANCELLED', 'EXPIRED', 'REFUNDED')),
+  checkout_url text,
+  qr_code text,
+  account_number text,
+  account_name text,
+  description text,
+  created_at timestamptz default now(),
+  paid_at timestamptz,
+  updated_at timestamptz default now()
+);
+
+alter table public.payment_logs add column if not exists topup_id uuid;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'payment_logs_topup_fk'
+  ) then
+    alter table public.payment_logs add constraint payment_logs_topup_fk foreign key (topup_id) references public.wallet_topups(id) on delete cascade;
+  end if;
+end $$;
 
 create table if not exists public.support_tickets (
   id uuid primary key default gen_random_uuid(),
@@ -150,6 +182,44 @@ begin
 end;
 $$;
 
+create or replace function public.mark_wallet_topup_paid(p_order_code bigint)
+returns public.wallet_topups
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_topup public.wallet_topups;
+begin
+  select * into v_topup
+  from public.wallet_topups
+  where order_code = p_order_code
+  for update;
+
+  if not found then
+    return null;
+  end if;
+
+  if v_topup.payment_status = 'PAID' then
+    return v_topup;
+  end if;
+
+  update public.wallet_topups
+  set payment_status = 'PAID',
+      paid_at = now(),
+      updated_at = now()
+  where id = v_topup.id
+  returning * into v_topup;
+
+  update public.profiles
+  set balance = coalesce(balance, 0) + v_topup.amount,
+      updated_at = now()
+  where id = v_topup.user_id;
+
+  return v_topup;
+end;
+$$;
+
 drop trigger if exists prevent_profile_privilege_update_trigger on public.profiles;
 create trigger prevent_profile_privilege_update_trigger
 before update on public.profiles
@@ -160,6 +230,7 @@ alter table public.categories enable row level security;
 alter table public.products enable row level security;
 alter table public.stock_items enable row level security;
 alter table public.orders enable row level security;
+alter table public.wallet_topups enable row level security;
 alter table public.payment_logs enable row level security;
 alter table public.support_tickets enable row level security;
 alter table public.ticket_replies enable row level security;
@@ -193,6 +264,13 @@ create policy "orders_user_insert" on public.orders for insert with check (auth.
 drop policy if exists "orders_admin_all" on public.orders;
 create policy "orders_admin_all" on public.orders for all using (public.is_admin()) with check (public.is_admin());
 
+drop policy if exists "wallet_topups_user_select" on public.wallet_topups;
+create policy "wallet_topups_user_select" on public.wallet_topups for select using (auth.uid() = user_id);
+drop policy if exists "wallet_topups_user_insert" on public.wallet_topups;
+create policy "wallet_topups_user_insert" on public.wallet_topups for insert with check (auth.uid() = user_id);
+drop policy if exists "wallet_topups_admin_all" on public.wallet_topups;
+create policy "wallet_topups_admin_all" on public.wallet_topups for all using (public.is_admin()) with check (public.is_admin());
+
 drop policy if exists "payment_logs_admin_all" on public.payment_logs;
 create policy "payment_logs_admin_all" on public.payment_logs for all using (public.is_admin()) with check (public.is_admin());
 
@@ -215,4 +293,6 @@ create policy "ticket_replies_admin_all" on public.ticket_replies for all using 
 create index if not exists products_slug_idx on public.products(slug);
 create index if not exists orders_user_id_idx on public.orders(user_id);
 create index if not exists orders_order_code_idx on public.orders(order_code);
+create index if not exists wallet_topups_user_id_idx on public.wallet_topups(user_id);
+create index if not exists wallet_topups_order_code_idx on public.wallet_topups(order_code);
 create index if not exists stock_items_product_status_idx on public.stock_items(product_id, status);
