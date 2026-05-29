@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
-const amounts = [100000, 250000, 500000, 1000000, 2000000, 5000000];
+const amounts = [5000,10000,20000,50000,100000, 250000, 500000, 1000000, 2000000, 5000000];
 
 type PayOSPayment = {
   qrCode?: string;
@@ -44,7 +44,6 @@ export function PaymentTopup({ balance }: { balance: number }) {
       setCheckoutUrl(data.checkoutUrl);
       setOpened(true);
       setTab("qr");
-      window.open(data.checkoutUrl, "payos_checkout", "width=520,height=760");
       toast.success("Đã tạo thanh toán payOS");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không tạo được thanh toán");
