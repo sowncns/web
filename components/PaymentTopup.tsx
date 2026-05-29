@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
-const amounts = [5000,10000,20000,50000,100000, 250000, 500000, 1000000, 2000000, 5000000];
+const amounts = [50000, 100000, 250000, 500000, 1000000, 2000000, 5000000];
 
 type PayOSPayment = {
   qrCode?: string;
@@ -18,7 +18,7 @@ type PayOSPayment = {
 };
 
 export function PaymentTopup({ balance }: { balance: number }) {
-  const [amount, setAmount] = useState(5000);
+  const [amount, setAmount] = useState(50000);
   const [opened, setOpened] = useState(false);
   const [tab, setTab] = useState<"qr" | "bank">("qr");
   const [loading, setLoading] = useState(false);
