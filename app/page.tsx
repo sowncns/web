@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, CreditCard, ShieldCheck, Wallet, Zap } from "lucide-react";
+import { AlertTriangle, CreditCard, Search, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ProductGrid } from "@/components/ProductGrid";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
@@ -15,7 +16,6 @@ export default async function HomePage() {
   }
   const { data: productsData } = await supabase.from("products").select("*").eq("is_active", true).limit(8);
   const products = productsData ?? [];
-  const categories = ["CapCut", "Canva", "AI Tools", "Streaming", "Game", "Office"];
 
   return (
     <>
@@ -45,13 +45,13 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {categories.map((name) => (
-            <Link key={name} href="/products" className="rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 shadow-sm hover:border-blue-200 hover:text-primary">
-              {name}
-            </Link>
-          ))}
-        </div>
+        <form action="/products" className="mt-5 flex gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input name="search" placeholder="Tìm sản phẩm" className="pl-9" />
+          </div>
+          <Button type="submit">Tìm</Button>
+        </form>
       </section>
       <section className="container-page pb-8">
         <div className="mb-6 flex items-end justify-between gap-4">
