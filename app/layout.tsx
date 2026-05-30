@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "DigiLicense - Dịch vụ số hợp lệ",
+  title: "SHOPMMOGIARE - Dịch vụ số hợp lệ",
   description: "Website bán gói dịch vụ số và hỗ trợ kích hoạt/license hợp lệ."
 };
 

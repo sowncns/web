@@ -15,11 +15,31 @@ type PayOSPayment = {
   bin?: string;
 };
 
+function getQrImageSrc(payment: PayOSPayment | null, checkoutUrl: string) {
+  if (payment?.qrCode?.startsWith("http") || payment?.qrCode?.startsWith("data:image")) return payment.qrCode;
+  if (payment?.qrCode) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(payment.qrCode)}`;
+  }
+  if (payment?.bin && payment?.accountNumber) {
+    const params = new URLSearchParams({
+      amount: String(payment.amount || ""),
+      addInfo: payment.description || "",
+      accountName: payment.accountName || "SHOPMMOGIARE"
+    });
+    return `https://img.vietqr.io/image/${payment.bin}-${payment.accountNumber}-compact2.png?${params.toString()}`;
+  }
+  if (checkoutUrl) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(checkoutUrl)}`;
+  }
+  return "";
+}
+
 export function PaymentButton({ payload, label = "Thanh toán qua payOS" }: { payload: Record<string, unknown>; label?: string }) {
   const [loading, setLoading] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState("");
   const [payment, setPayment] = useState<PayOSPayment | null>(null);
   const [tab, setTab] = useState<"qr" | "bank">("qr");
+  const qrImageSrc = getQrImageSrc(payment, checkoutUrl);
 
   async function pay() {
     setLoading(true);
@@ -72,7 +92,7 @@ export function PaymentButton({ payload, label = "Thanh toán qua payOS" }: { pa
             </div>
             {tab === "qr" ? (
               <div className="flex flex-col items-center justify-center gap-3">
-                {payment?.qrCode ? <img src={payment.qrCode} alt="Mã QR payOS" className="h-52 w-52 object-contain" /> : <div className="grid h-52 w-52 place-items-center rounded-md border border-dashed text-sm text-muted-foreground">QR payOS</div>}
+                {qrImageSrc ? <img src={qrImageSrc} alt="Mã QR payOS" className="h-52 w-52 object-contain" /> : <div className="grid h-52 w-52 place-items-center rounded-md border border-dashed text-sm text-muted-foreground">QR payOS</div>}
                 <p className="text-xs text-muted-foreground">Quét mã bằng ứng dụng ngân hàng hoặc ví điện tử hỗ trợ VietQR.</p>
               </div>
             ) : (

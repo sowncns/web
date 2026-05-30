@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -8,13 +9,27 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdminOrdersPage() {
+export default async function AdminOrdersPage({ searchParams }: { searchParams: { orderCode?: string } }) {
   noStore();
-  const { data: ordersData } = await supabaseAdmin.from("orders").select("*, products(name)").order("created_at", { ascending: false }).limit(200);
+  const orderCode = searchParams.orderCode?.trim();
+  let query = supabaseAdmin.from("orders").select("*, products(name)").order("created_at", { ascending: false }).limit(200);
+  if (orderCode) query = query.eq("order_code", Number(orderCode));
+  const { data: ordersData } = await query;
   const orders = ordersData ?? [];
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Quản lý đơn hàng</h1>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Quản lý đơn hàng</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Tìm kiếm và xử lý đơn hàng của khách.</p>
+        </div>
+        <form className="flex w-full gap-2 md:w-auto" action="/admin/orders">
+          <Input name="orderCode" inputMode="numeric" defaultValue={orderCode || ""} placeholder="Tìm mã đơn hàng" className="md:w-64" />
+          <Button type="submit">Tìm</Button>
+          {orderCode ? <Button asChild type="button" variant="outline"><Link href="/admin/orders">Xóa</Link></Button> : null}
+        </form>
+      </div>
+      {orderCode ? <p className="text-sm text-muted-foreground">Kết quả cho mã đơn: <strong>{orderCode}</strong></p> : null}
       <div className="space-y-3 md:hidden">
         {orders.map((o: any) => (
           <div key={o.id} className="rounded-lg border bg-white p-4 shadow-sm">

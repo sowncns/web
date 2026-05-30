@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getAppUrl } from "@/lib/url";
 import { createPaymentSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
       order_status: "PENDING"
     }).select("*").single();
     if (orderError) throw new Error(orderError.message);
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl(request);
     const paymentLink = await payOS.paymentRequests.create({
       orderCode,
       amount: totalAmount,

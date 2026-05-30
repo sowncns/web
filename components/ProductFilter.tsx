@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 export function ProductFilter({ categories }: { categories: { id: string; name: string; slug: string }[] }) {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useSearchParams() ?? new URLSearchParams();
 
   function update(formData: FormData) {
     const next = new URLSearchParams();

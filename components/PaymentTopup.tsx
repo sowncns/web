@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Copy, CreditCard, History, Landmark, QrCode, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 const amounts = [50000, 100000, 250000, 500000, 1000000, 2000000, 5000000];
 
@@ -17,13 +19,46 @@ type PayOSPayment = {
   bin?: string;
 };
 
-export function PaymentTopup({ balance }: { balance: number }) {
+type Topup = {
+  id: string;
+  amount: number;
+  order_code: number;
+  payment_provider: string | null;
+  payment_status: string;
+  checkout_url: string | null;
+  description: string | null;
+  created_at: string;
+  paid_at: string | null;
+};
+
+function getQrImageSrc(payment: PayOSPayment | null, checkoutUrl: string) {
+  if (payment?.qrCode?.startsWith("http") || payment?.qrCode?.startsWith("data:image")) return payment.qrCode;
+  if (payment?.qrCode) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(payment.qrCode)}`;
+  }
+  if (payment?.bin && payment?.accountNumber) {
+    const params = new URLSearchParams({
+      amount: String(payment.amount || ""),
+      addInfo: payment.description || "",
+      accountName: payment.accountName || "SHOPMMOGIARE"
+    });
+    return `https://img.vietqr.io/image/${payment.bin}-${payment.accountNumber}-compact2.png?${params.toString()}`;
+  }
+  if (checkoutUrl) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(checkoutUrl)}`;
+  }
+  return "";
+}
+
+export function PaymentTopup({ balance, topups }: { balance: number; topups: Topup[] }) {
+  const router = useRouter();
   const [amount, setAmount] = useState(50000);
   const [opened, setOpened] = useState(false);
   const [tab, setTab] = useState<"qr" | "bank">("qr");
   const [loading, setLoading] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState("");
   const [payment, setPayment] = useState<PayOSPayment | null>(null);
+  const qrImageSrc = getQrImageSrc(payment, checkoutUrl);
 
   async function copy(value: string | number) {
     await navigator.clipboard.writeText(String(value));
@@ -44,11 +79,24 @@ export function PaymentTopup({ balance }: { balance: number }) {
       setCheckoutUrl(data.checkoutUrl);
       setOpened(true);
       setTab("qr");
+      router.refresh();
       toast.success("Đã tạo thanh toán payOS");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không tạo được thanh toán");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function cancelTopup(id: string) {
+    try {
+      const res = await fetch(`/api/payment/topups/${id}/cancel`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không hủy được giao dịch");
+      toast.success("Đã hủy giao dịch nạp tiền");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không hủy được giao dịch");
     }
   }
 
@@ -148,8 +196,8 @@ export function PaymentTopup({ balance }: { balance: number }) {
 
           {tab === "qr" ? (
             <div className="flex min-h-80 flex-col items-center justify-center gap-3">
-              {payment?.qrCode ? (
-                <img src={payment.qrCode} alt="Mã QR payOS" className="h-52 w-52 object-contain" />
+              {qrImageSrc ? (
+                <img src={qrImageSrc} alt="Mã QR payOS" className="h-52 w-52 object-contain" />
               ) : (
                 <div className="grid h-52 w-52 place-items-center border-4 border-slate-900 bg-white text-center text-xs font-semibold text-slate-500">Đang tải QR</div>
               )}
@@ -158,7 +206,7 @@ export function PaymentTopup({ balance }: { balance: number }) {
           ) : (
             <div className="mx-auto max-w-md pt-5">
               <div className="border-t border-slate-200 pt-4">
-                <p className="font-semibold text-slate-950">HO KINH DOANH DIGILICENSE</p>
+                <p className="font-semibold text-slate-950">SHOPMMOGIARE</p>
                 <p className="mt-1 text-sm text-slate-700">Ngân hàng TMCP Quân đội</p>
 
                 <div className="mt-4 space-y-4 text-sm">
@@ -194,6 +242,88 @@ export function PaymentTopup({ balance }: { balance: number }) {
           )}
         </section>
       ) : null}
+
+      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-950">Lịch sử nạp tiền</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Theo dõi các giao dịch nạp số dư gần đây</p>
+          </div>
+          <History className="h-5 w-5 text-slate-400" />
+        </div>
+
+        {!topups.length ? (
+          <div className="mt-5 rounded-md border border-dashed border-slate-200 p-6 text-center text-sm text-muted-foreground">
+            Chưa có giao dịch nạp tiền.
+          </div>
+        ) : (
+          <>
+            <div className="mt-5 space-y-3 md:hidden">
+              {topups.map((topup) => (
+                <div key={topup.id} className="rounded-md border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Mã giao dịch</p>
+                      <p className="font-bold text-slate-950">{topup.order_code}</p>
+                    </div>
+                    <OrderStatusBadge status={topup.payment_status} />
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm">
+                    <p>Số tiền: <strong>{formatCurrency(topup.amount)}</strong></p>
+                    <p>Nội dung: <strong>{topup.description || "-"}</strong></p>
+                    <p className="text-xs text-muted-foreground">{formatDate(topup.created_at)}</p>
+                    {topup.checkout_url && topup.payment_status === "PENDING" ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <a href={topup.checkout_url} target="_blank" rel="noreferrer">Tiếp tục thanh toán</a>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => cancelTopup(topup.id)}>Hủy</Button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 hidden overflow-x-auto rounded-md border border-slate-200 md:block">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-muted text-left">
+                  <tr>
+                    <th className="p-3">Mã giao dịch</th>
+                    <th>Số tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Nội dung</th>
+                    <th>Ngày tạo</th>
+                    <th>Ngày thanh toán</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topups.map((topup) => (
+                    <tr key={topup.id} className="border-t">
+                      <td className="p-3 font-medium">{topup.order_code}</td>
+                      <td>{formatCurrency(topup.amount)}</td>
+                      <td><OrderStatusBadge status={topup.payment_status} /></td>
+                      <td>{topup.description || "-"}</td>
+                      <td>{formatDate(topup.created_at)}</td>
+                      <td>{topup.paid_at ? formatDate(topup.paid_at) : "-"}</td>
+                      <td>
+                        {topup.checkout_url && topup.payment_status === "PENDING" ? (
+                          <div className="flex gap-2">
+                            <Button asChild variant="outline" size="sm">
+                              <a href={topup.checkout_url} target="_blank" rel="noreferrer">Thanh toán</a>
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => cancelTopup(topup.id)}>Hủy</Button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }

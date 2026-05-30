@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAppUrl } from "@/lib/url";
 import { createTopupPaymentSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     if (profile?.status === "BANNED") return NextResponse.json({ error: "Tài khoản đã bị khóa" }, { status: 403 });
 
     const orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 90 + 10)}`.slice(0, 15));
-    const appUrl = process.env.APP_URL || "https://web-rouge-three-43.vercel.app";
+    const appUrl = getAppUrl(request);
     const description = `Nap tien ${orderCode}`.slice(0, 25);
 
     const { data: topup, error: topupError } = await supabaseAdmin.from("wallet_topups").insert({
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       buyerName: profile?.full_name || user.email || "Khach hang",
       buyerEmail: profile?.email || user.email || undefined,
       buyerPhone: profile?.phone || undefined,
-      items: [{ name: "Nap so du DigiLicense", quantity: 1, price: body.amount }]
+      items: [{ name: "Nap so du SHOPMMOGIARE", quantity: 1, price: body.amount }]
     });
 
     const { error: updateError } = await supabaseAdmin.from("wallet_topups").update({

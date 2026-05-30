@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, CreditCard, Headphones, ShieldCheck, Wallet, Zap } from "lucide-react";
+import { AlertTriangle, CreditCard, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/ProductGrid";
 import { createClient } from "@/lib/supabase/server";
@@ -68,7 +68,7 @@ export default async function HomePage() {
         <div className="mt-4 grid gap-4 md:grid-cols-4">
           {[
             [CreditCard, "Thanh toán tự động qua payOS"],
-            [Headphones, "Hỗ trợ bảo hành"],
+            [Wallet, "Quản lý số dư rõ ràng"],
             [Zap, "Giao hàng nhanh"],
             [ShieldCheck, "Dịch vụ/license hợp lệ"]
           ].map(([Icon, title]) => (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, FolderTree, Headphones, LayoutDashboard, Package, Receipt, Users } from "lucide-react";
+import { Boxes, FolderTree, LayoutDashboard, Package, Receipt, Users } from "lucide-react";
 
 const items = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -7,8 +7,7 @@ const items = [
   { href: "/admin/categories", label: "Danh mục", icon: FolderTree },
   { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
   { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes },
-  { href: "/admin/users", label: "Người dùng", icon: Users },
-  { href: "/admin/tickets", label: "Hỗ trợ", icon: Headphones }
+  { href: "/admin/users", label: "Người dùng", icon: Users }
 ];
 
 export function AdminSidebar() {

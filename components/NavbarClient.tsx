@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, CreditCard, FolderTree, Headphones, History, Home, LayoutDashboard, LogOut, Package, Receipt, ShieldCheck, ShoppingBag, Users, User } from "lucide-react";
+import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LogOut, MessageCircle, Package, Receipt, ShieldCheck, ShoppingBag, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ const userLinks = [
   { href: "/products", label: "Sản phẩm", icon: Package },
   { href: "/payment", label: "Nạp tiền", icon: CreditCard },
   { href: "/orders", label: "Lịch sử đơn", icon: History },
-  { href: "/support", label: "Hỗ trợ", icon: Headphones }
+  { href: "/contact", label: "Liên hệ", icon: MessageCircle }
 ];
 
 const adminLinks = [
@@ -20,12 +20,11 @@ const adminLinks = [
   { href: "/admin/categories", label: "Danh mục", icon: FolderTree },
   { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
   { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes },
-  { href: "/admin/users", label: "Người dùng", icon: Users },
-  { href: "/admin/tickets", label: "Hỗ trợ", icon: Headphones }
+  { href: "/admin/users", label: "Người dùng", icon: Users }
 ];
 
 export function NavbarClient({ userEmail, profile }: { userEmail?: string | null; profile?: any }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const isAdmin = profile?.role === "ADMIN";
   const isAdminArea = pathname.startsWith("/admin") || isAdmin;
   const sidebarLinks = isAdmin ? adminLinks : userLinks;
@@ -36,14 +35,14 @@ export function NavbarClient({ userEmail, profile }: { userEmail?: string | null
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-[184px] border-r border-slate-200 bg-white lg:block">
         <Link href={isAdminArea ? "/admin" : "/"} className="flex h-[52px] items-center gap-2 border-b px-3 font-bold text-slate-900">
           <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-[11px] font-black text-white">DL</span>
-          <span>DigiLicense</span>
+          <span>SHOPMMOGIARE</span>
         </Link>
         <nav className="space-y-1 p-3 text-sm">
           {isAdmin ? <p className="mb-2 px-3 text-xs font-semibold uppercase text-slate-400">Admin</p> : null}
           {sidebarLinks.map((item) => (
-            <Link key={item.href} href={item.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-slate-600 hover:bg-secondary hover:text-primary">
+            <Link key={item.href} href={item.href} className="relative flex items-center gap-3 rounded-md px-3 py-2 text-slate-600 hover:bg-secondary hover:text-primary">
               <item.icon className="h-4 w-4" />
-              {item.label}
+              <span className="min-w-0 flex-1">{item.label}</span>
             </Link>
           ))}
           {!isAdmin ? (
@@ -59,7 +58,7 @@ export function NavbarClient({ userEmail, profile }: { userEmail?: string | null
           <div className="min-w-0">
             <Link href={isAdminArea ? "/admin" : "/"} className="flex items-center gap-2 font-bold text-slate-900 lg:hidden">
               <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-[11px] font-black text-white">DL</span>
-              <span className="truncate">DigiLicense</span>
+              <span className="truncate">SHOPMMOGIARE</span>
             </Link>
             <p className="hidden text-sm font-semibold text-slate-900 lg:block">{isAdminArea ? "Quản trị hệ thống" : "Quản lý dịch vụ số"}</p>
           </div>

@@ -143,8 +143,9 @@ export function StockForm({ products }: { products: any[] }) {
   );
 }
 
-export function OrderAdminActions({ orderId }: { orderId: string }) {
+export function OrderAdminActions({ orderId, quantity }: { orderId: string; quantity: number }) {
   const router = useRouter();
+  const exampleLines = Array.from({ length: Math.min(quantity, 3) }, (_, index) => `username${index + 1}|password${index + 1}`).join("\n");
   async function autoDeliver() {
     try {
       await send(`/api/admin/orders/${orderId}`, "PATCH", { action: "auto_delivery" });
@@ -156,7 +157,7 @@ export function OrderAdminActions({ orderId }: { orderId: string }) {
   }
   async function manual(formData: FormData) {
     try {
-      await send(`/api/admin/orders/${orderId}`, "PATCH", { action: "manual_delivery", username: formData.get("username"), password: formData.get("password"), note: formData.get("note") });
+      await send(`/api/admin/orders/${orderId}`, "PATCH", { action: "manual_delivery", lines: formData.get("lines") });
       toast.success("Đã cấp tài khoản thủ công");
       router.refresh();
     } catch (error) {
@@ -165,11 +166,16 @@ export function OrderAdminActions({ orderId }: { orderId: string }) {
   }
   return (
     <div className="space-y-4 rounded-lg border bg-white p-4">
+      <div className="rounded-md border border-sky-100 bg-sky-50 p-3 text-sm font-semibold text-sky-900">
+        Đơn này cần cấp {quantity} tài khoản. Khi nhập thủ công, vui lòng nhập đúng {quantity} dòng.
+      </div>
       <Button onClick={autoDeliver}>Cấp tài khoản tự động</Button>
-      <form action={manual} className="grid gap-3 md:grid-cols-3">
-        <Input name="username" placeholder="Tài khoản" required />
-        <Input name="password" placeholder="Mật khẩu" required />
-        <Input name="note" placeholder="Ghi chú" />
+      <form action={manual} className="space-y-3">
+        <div className="space-y-1">
+          <Label>Cấp thủ công nhiều tài khoản</Label>
+          <Textarea name="lines" rows={Math.max(4, Math.min(quantity + 1, 10))} placeholder={`Cần ${quantity} dòng, mỗi dòng một tài khoản:\n${exampleLines}${quantity > 3 ? "\n..." : ""}`} required />
+          <p className="text-xs text-muted-foreground">Dạng: username|password|ghi chú. Nếu bỏ trống ghi chú, hệ thống tự dùng: đăng nhập trên điện thoại trước rồi quét mã đăng nhập trên PC.</p>
+        </div>
         <Button variant="secondary">Cấp tài khoản thủ công</Button>
       </form>
     </div>
@@ -198,26 +204,6 @@ export function UserPatchForm({ user }: { user: any }) {
         <option value="BANNED">Bị khóa</option>
       </select>
       <Button size="sm">Lưu</Button>
-    </form>
-  );
-}
-
-export function AdminTicketReply({ ticketId }: { ticketId: string }) {
-  const router = useRouter();
-  async function submit(formData: FormData) {
-    try {
-      await send(`/api/admin/tickets/${ticketId}`, "PATCH", { message: formData.get("message"), close: formData.get("close") === "on" });
-      toast.success("Đã phản hồi ticket");
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không gửi được");
-    }
-  }
-  return (
-    <form action={submit} className="mt-4 space-y-3 rounded-lg border bg-white p-4">
-      <Textarea name="message" placeholder="Phản hồi của admin" />
-      <label className="flex items-center gap-2 text-sm"><input name="close" type="checkbox" /> Đóng ticket</label>
-      <Button>Gửi phản hồi</Button>
     </form>
   );
 }

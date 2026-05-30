@@ -73,9 +73,7 @@ export const stockImportSchema = z.object({
 
 export const manualDeliverySchema = z.object({
   action: z.literal("manual_delivery"),
-  username: z.string().min(1),
-  password: z.string().min(1),
-  note: z.string().optional().default("")
+  lines: z.string().min(3, "Vui lòng nhập tài khoản cần cấp")
 });
 
 export const orderPatchSchema = z.discriminatedUnion("action", [
@@ -83,14 +81,3 @@ export const orderPatchSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("auto_delivery") }),
   manualDeliverySchema
 ]);
-
-export const ticketSchema = z.object({
-  order_id: z.string().uuid().nullable().optional(),
-  title: z.string().min(3),
-  message: z.string().min(5)
-});
-
-export const ticketReplySchema = z.object({
-  message: z.string().min(2),
-  close: z.boolean().optional().default(false)
-});

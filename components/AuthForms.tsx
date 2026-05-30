@@ -12,7 +12,7 @@ import { loginSchema, registerSchema } from "@/lib/validations";
 
 export function LoginForm() {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useSearchParams() ?? new URLSearchParams();
   const [loading, setLoading] = useState(false);
 
   async function submit(formData: FormData) {
@@ -30,7 +30,8 @@ export function LoginForm() {
       toast.error("Email hoặc mật khẩu không đúng");
       return;
     }
-    router.push(params.get("next") || "/account");
+    const { data: profile } = await supabase.from("profiles").select("role").single();
+    router.push(params.get("next") || (profile?.role === "ADMIN" ? "/admin" : "/"));
     router.refresh();
   }
 
@@ -70,19 +71,19 @@ export function RegisterForm() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: { data: { full_name: parsed.data.fullName, phone: parsed.data.phone } }
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed.data)
     });
-    if (error || !data.user) {
-      toast.error(error?.message || "Không thể đăng ký");
+    const result = await response.json();
+    if (!response.ok) {
+      toast.error(result.error || "Không thể đăng ký");
       setLoading(false);
       return;
     }
     setLoading(false);
-    if (!data.session) {
+    if (!result.hasSession) {
       toast.success("Vui lòng kiểm tra email để xác nhận tài khoản");
       return;
     }

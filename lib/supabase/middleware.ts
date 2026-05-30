@@ -23,7 +23,7 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
-  const protectedRoute = pathname.startsWith("/account") || pathname.startsWith("/orders") || pathname.startsWith("/support") || pathname.startsWith("/cart") || pathname === "/payment";
+  const protectedRoute = pathname.startsWith("/account") || pathname.startsWith("/orders") || pathname.startsWith("/cart") || pathname === "/payment";
   const adminRoute = pathname.startsWith("/admin");
 
   if ((protectedRoute || adminRoute) && !user) {

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export function AdminStockFilter({ products }: { products: any[] }) {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useSearchParams() ?? new URLSearchParams();
 
   function submit(formData: FormData) {
     const next = new URLSearchParams();

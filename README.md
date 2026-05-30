@@ -1,4 +1,4 @@
-# DigiLicense
+# SHOPMMOGIARE
 
 Website bán dịch vụ số hợp lệ với Next.js 14, Supabase và payOS.
 
@@ -34,6 +34,15 @@ Chạy trong Supabase SQL Editor:
 2. `supabase/seed.sql`
 
 Schema có `profiles.balance` và `wallet_topups` cho trang nạp tiền `/payment`.
+
+Trong Supabase Dashboard, vào Authentication > URL Configuration và đặt:
+
+- Site URL: `https://web-rouge-three-43.vercel.app`
+- Redirect URLs: thêm `https://web-rouge-three-43.vercel.app/**`
+
+Nếu Site URL còn là `http://localhost:3000`, link xác nhận email có thể quay về local khi deploy.
+
+Template email xác nhận tài khoản nằm ở `supabase/email-confirm-signup.html`. Dán nội dung file này vào Supabase Dashboard > Authentication > Email Templates > Confirm sign up.
 
 ## payOS
 
