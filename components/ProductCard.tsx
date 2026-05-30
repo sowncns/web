@@ -24,6 +24,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             src={product.image_url || "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=1200&auto=format&fit=crop"}
             alt={product.name}
             fill
+            unoptimized={Boolean(product.image_url?.startsWith("data:"))}
             className="object-cover"
           />
         </div>

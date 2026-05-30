@@ -24,9 +24,9 @@ export function AdminStockFilter({ products }: { products: any[] }) {
       </select>
       <select name="status" defaultValue={params.get("status") || ""} className="h-10 rounded-md border-input text-sm">
         <option value="">Tất cả trạng thái</option>
-        <option value="AVAILABLE">AVAILABLE</option>
-        <option value="USED">USED</option>
-        <option value="DISABLED">DISABLED</option>
+        <option value="AVAILABLE">Còn hàng</option>
+        <option value="USED">Đã dùng</option>
+        <option value="DISABLED">Đã tắt</option>
       </select>
       <Button type="submit">Lọc</Button>
       <Button type="button" variant="outline" onClick={() => router.push("/admin/stocks")}>Xóa lọc</Button>

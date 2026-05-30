@@ -2,7 +2,7 @@ import { MailTD, APIError } from "mailtd";
 
 const client = new MailTD("td_462dd4bcbab3143a6f08d5a3f434adfeca6309a834d47aa0402b2518de64f4cc");
 
-function randomString(length = 10) {
+function randomString(length = 6) {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
 

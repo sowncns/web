@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, CreditCard, Headphones, History, Home, LayoutDashboard, LogOut, Package, Receipt, ShieldCheck, ShoppingBag, User } from "lucide-react";
+import { Boxes, CreditCard, FolderTree, Headphones, History, Home, LayoutDashboard, LogOut, Package, Receipt, ShieldCheck, ShoppingBag, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
@@ -16,15 +16,19 @@ const userLinks = [
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/products", label: "Sản phẩm", icon: Package },
+  { href: "/admin/categories", label: "Danh mục", icon: FolderTree },
   { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
-  { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes }
+  { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes },
+  { href: "/admin/users", label: "Người dùng", icon: Users },
+  { href: "/admin/tickets", label: "Hỗ trợ", icon: Headphones }
 ];
 
 export function NavbarClient({ userEmail, profile }: { userEmail?: string | null; profile?: any }) {
   const pathname = usePathname();
-  const isAdminArea = pathname.startsWith("/admin");
   const isAdmin = profile?.role === "ADMIN";
-  const sidebarLinks = isAdminArea && isAdmin ? adminLinks : userLinks;
+  const isAdminArea = pathname.startsWith("/admin") || isAdmin;
+  const sidebarLinks = isAdmin ? adminLinks : userLinks;
   const bottomLinks = sidebarLinks.slice(0, 5);
 
   return (
@@ -35,28 +39,19 @@ export function NavbarClient({ userEmail, profile }: { userEmail?: string | null
           <span>DigiLicense</span>
         </Link>
         <nav className="space-y-1 p-3 text-sm">
-          {isAdminArea && isAdmin ? <p className="mb-2 px-3 text-xs font-semibold uppercase text-slate-400">Admin</p> : null}
+          {isAdmin ? <p className="mb-2 px-3 text-xs font-semibold uppercase text-slate-400">Admin</p> : null}
           {sidebarLinks.map((item) => (
             <Link key={item.href} href={item.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-slate-600 hover:bg-secondary hover:text-primary">
               <item.icon className="h-4 w-4" />
               {item.label}
             </Link>
           ))}
-          {!isAdminArea && isAdmin ? (
-            <div className="mt-4 border-t pt-3">
-              <p className="mb-2 px-3 text-xs font-semibold uppercase text-slate-400">Admin</p>
-              {adminLinks.map((item) => (
-                <Link key={item.href} href={item.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-slate-600 hover:bg-secondary hover:text-primary">
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+          {!isAdmin ? (
+            <Link href="/" className="mt-4 flex items-center gap-3 rounded-md px-3 py-2 text-slate-600 hover:bg-slate-50">
+              <ShieldCheck className="h-4 w-4" />
+              Về trang chủ
+            </Link>
           ) : null}
-          <Link href="/" className="mt-4 flex items-center gap-3 rounded-md px-3 py-2 text-slate-600 hover:bg-slate-50">
-            <ShieldCheck className="h-4 w-4" />
-            Về trang chủ
-          </Link>
         </nav>
       </aside>
       <header className="fixed left-0 right-0 top-0 z-40 border-b border-slate-200 bg-white lg:left-[184px]">

@@ -12,7 +12,11 @@ export function formatCurrency(value: number | string | null | undefined) {
 
 export function formatDate(value: string | null | undefined) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Ho_Chi_Minh"
+  }).format(new Date(value));
 }
 
 export function maskUsername(value: string) {

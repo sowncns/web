@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, CreditCard, Headphones, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/ProductGrid";
@@ -8,7 +9,10 @@ import { formatCurrency } from "@/lib/utils";
 export default async function HomePage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = user ? await supabase.from("profiles").select("balance").eq("id", user.id).single() : { data: null };
+  const { data: profile } = user ? await supabase.from("profiles").select("role,balance").eq("id", user.id).single() : { data: null };
+  if (profile?.role === "ADMIN") {
+    redirect("/admin");
+  }
   const { data: productsData } = await supabase.from("products").select("*").eq("is_active", true).limit(8);
   const products = productsData ?? [];
   const categories = ["CapCut", "Canva", "AI Tools", "Streaming", "Game", "Office"];

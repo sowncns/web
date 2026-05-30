@@ -41,10 +41,10 @@ export const createTopupPaymentSchema = z.object({
 
 export const productSchema = z.object({
   name: z.string().min(2),
-  slug: z.string().min(2),
+  slug: z.string().min(2).optional(),
   category_id: z.string().uuid().nullable().optional(),
   description: z.string().nullable().optional(),
-  image_url: z.string().url().nullable().optional().or(z.literal("")),
+  image_url: z.string().max(2_500_000, "Ảnh quá lớn, vui lòng chọn ảnh nhỏ hơn").nullable().optional().or(z.literal("")),
   price: z.coerce.number().positive(),
   duration: z.string().nullable().optional(),
   warranty_policy: z.string().nullable().optional(),

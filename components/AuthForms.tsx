@@ -94,7 +94,7 @@ export function RegisterForm() {
     <Card>
       <CardHeader>
         <CardTitle>Đăng ký</CardTitle>
-        <CardDescription>Tạo tài khoản bằng Supabase Auth.</CardDescription>
+      
       </CardHeader>
       <CardContent>
         <form action={submit} className="space-y-4">

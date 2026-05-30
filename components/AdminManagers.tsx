@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
@@ -15,16 +16,44 @@ async function send(url: string, method: string, body: unknown) {
   return data;
 }
 
+function createSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || `san-pham-${Date.now()}`;
+}
+
+function readImageFile(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    if (!file.size) return resolve("");
+    if (!file.type.startsWith("image/")) return reject(new Error("Vui lòng chọn file ảnh"));
+    if (file.size > 1_500_000) return reject(new Error("Ảnh quá lớn, vui lòng chọn ảnh dưới 1.5MB"));
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Không đọc được file ảnh"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ProductForm({ categories, product }: { categories: any[]; product?: any }) {
   const router = useRouter();
   async function submit(formData: FormData) {
     try {
+      const form = product ? null : document.querySelector<HTMLFormElement>("[data-product-create-form='true']");
+      const name = String(formData.get("name") || "");
+      const imageFile = formData.get("image_file");
+      const imageUrl = imageFile instanceof File && imageFile.size ? await readImageFile(imageFile) : product?.image_url || "";
       await send(product ? `/api/admin/products/${product.id}` : "/api/admin/products", product ? "PATCH" : "POST", {
-        name: formData.get("name"),
-        slug: formData.get("slug"),
+        name,
+        slug: product?.slug || `${createSlug(name)}-${Date.now()}`,
         category_id: formData.get("category_id") || null,
         description: formData.get("description"),
-        image_url: formData.get("image_url"),
+        image_url: imageUrl,
         price: formData.get("price"),
         duration: formData.get("duration"),
         warranty_policy: formData.get("warranty_policy"),
@@ -32,19 +61,23 @@ export function ProductForm({ categories, product }: { categories: any[]; produc
         is_active: formData.get("is_active") === "on"
       });
       toast.success("Đã lưu sản phẩm");
+      form?.reset();
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không lưu được");
     }
   }
   return (
-    <form action={submit} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2">
+    <form action={submit} data-product-create-form={!product ? "true" : undefined} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2">
       <div className="space-y-1"><Label>Tên</Label><Input name="name" defaultValue={product?.name} required /></div>
-      <div className="space-y-1"><Label>Slug</Label><Input name="slug" defaultValue={product?.slug} required /></div>
       <div className="space-y-1"><Label>Danh mục</Label><select name="category_id" defaultValue={product?.category_id || ""} className="h-10 w-full rounded-md border-input text-sm"><option value="">Chọn danh mục</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
       <div className="space-y-1"><Label>Giá</Label><Input name="price" type="number" defaultValue={product?.price} required /></div>
       <div className="space-y-1"><Label>Thời hạn</Label><Input name="duration" defaultValue={product?.duration} /></div>
-      <div className="space-y-1"><Label>Image URL</Label><Input name="image_url" defaultValue={product?.image_url} /></div>
+      <div className="space-y-1">
+        <Label>Ảnh sản phẩm</Label>
+        <Input name="image_file" type="file" accept="image/*" />
+        {product?.image_url ? <p className="text-xs text-muted-foreground">Đang có ảnh. Chọn file mới nếu muốn thay đổi.</p> : null}
+      </div>
       <div className="space-y-1 md:col-span-2"><Label>Mô tả</Label><Textarea name="description" defaultValue={product?.description} /></div>
       <div className="space-y-1"><Label>Bảo hành</Label><Textarea name="warranty_policy" defaultValue={product?.warranty_policy} /></div>
       <div className="space-y-1"><Label>Hướng dẫn nhận hàng</Label><Textarea name="delivery_guide" defaultValue={product?.delivery_guide} /></div>
@@ -156,8 +189,14 @@ export function UserPatchForm({ user }: { user: any }) {
   }
   return (
     <form action={submit} className="flex gap-2">
-      <select name="role" defaultValue={user.role} className="h-9 rounded-md border-input text-sm"><option>USER</option><option>ADMIN</option></select>
-      <select name="status" defaultValue={user.status} className="h-9 rounded-md border-input text-sm"><option>ACTIVE</option><option>BANNED</option></select>
+      <select name="role" defaultValue={user.role} className="h-9 rounded-md border-input text-sm">
+        <option value="USER">Người dùng</option>
+        <option value="ADMIN">Quản trị</option>
+      </select>
+      <select name="status" defaultValue={user.status} className="h-9 rounded-md border-input text-sm">
+        <option value="ACTIVE">Hoạt động</option>
+        <option value="BANNED">Bị khóa</option>
+      </select>
       <Button size="sm">Lưu</Button>
     </form>
   );
@@ -183,29 +222,8 @@ export function AdminTicketReply({ ticketId }: { ticketId: string }) {
   );
 }
 
-export function ProductRowActions({ product, categories }: { product: any; categories: any[] }) {
+export function ProductRowActions({ product }: { product: any }) {
   const router = useRouter();
-
-  async function update(formData: FormData) {
-    try {
-      await send(`/api/admin/products/${product.id}`, "PATCH", {
-        name: formData.get("name"),
-        slug: formData.get("slug"),
-        category_id: formData.get("category_id") || null,
-        price: formData.get("price"),
-        duration: formData.get("duration"),
-        image_url: product.image_url || "",
-        description: product.description || "",
-        warranty_policy: product.warranty_policy || "",
-        delivery_guide: product.delivery_guide || "",
-        is_active: product.is_active
-      });
-      toast.success("Đã cập nhật sản phẩm");
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không cập nhật được");
-    }
-  }
 
   async function toggleActive() {
     try {
@@ -218,12 +236,12 @@ export function ProductRowActions({ product, categories }: { product: any; categ
   }
 
   async function remove() {
-    if (!confirm("Xóa/ẩn sản phẩm này? Sản phẩm sẽ không hiển thị cho khách.")) return;
+    if (!confirm("Xóa sản phẩm này? Sản phẩm sẽ bị xóa khỏi hệ thống.")) return;
     try {
       await fetch(`/api/admin/products/${product.id}`, { method: "DELETE" }).then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
       });
-      toast.success("Đã ẩn sản phẩm");
+      toast.success("Đã xóa sản phẩm");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không xóa được");
@@ -231,28 +249,32 @@ export function ProductRowActions({ product, categories }: { product: any; categ
   }
 
   return (
-    <div className="space-y-3">
-      <form action={update} className="grid min-w-[520px] gap-2 md:grid-cols-[1.2fr_1fr_1fr_.8fr_.8fr_auto]">
-        <Input name="name" defaultValue={product.name} />
-        <Input name="slug" defaultValue={product.slug} />
-        <select name="category_id" defaultValue={product.category_id || ""} className="h-9 rounded-md border-input text-sm">
-          <option value="">Không danh mục</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </select>
-        <Input name="price" type="number" defaultValue={product.price} />
-        <Input name="duration" defaultValue={product.duration || ""} />
-        <Button size="sm"><Pencil className="h-4 w-4" /> Cập nhật</Button>
-      </form>
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={toggleActive}>
-          {product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {product.is_active ? "Ẩn sản phẩm" : "Hiện sản phẩm"}
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="outline" size="sm" onClick={toggleActive}>
+        {product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        {product.is_active ? "Ẩn sản phẩm" : "Hiện sản phẩm"}
+      </Button>
+      <Button type="button" variant="destructive" size="sm" onClick={remove}>
+        <Trash2 className="h-4 w-4" />
+        Xóa
+      </Button>
+    </div>
+  );
+}
+
+export function ProductUpdatePanel({ product, categories }: { product: any; categories: any[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setOpen((value) => !value)}>
+          <Pencil className="h-4 w-4" />
+          {open ? "Đóng cập nhật" : "Cập nhật"}
         </Button>
-        <Button type="button" variant="destructive" size="sm" onClick={remove}>
-          <Trash2 className="h-4 w-4" />
-          Xóa
-        </Button>
+        <ProductRowActions product={product} />
       </div>
+      {open ? <ProductForm categories={categories} product={product} /> : null}
     </div>
   );
 }

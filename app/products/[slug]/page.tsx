@@ -17,19 +17,19 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     <div className="container-page py-10">
       <div className="grid gap-8 lg:grid-cols-[520px_1fr]">
         <div className="relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted">
-          <Image src={product.image_url || "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=1200&auto=format&fit=crop"} alt={product.name} fill className="object-cover" />
+          <Image src={product.image_url || "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=1200&auto=format&fit=crop"} alt={product.name} fill unoptimized={Boolean(product.image_url?.startsWith("data:"))} className="object-cover" />
         </div>
         <div>
           <h1 className="text-3xl font-bold">{product.name}</h1>
           <p className="mt-3 text-2xl font-bold text-primary">{formatCurrency(product.price)}</p>
           <p className="mt-2 text-muted-foreground">Thời hạn: {product.duration || "Theo gói"}</p>
-          <p className="mt-6 whitespace-pre-line">{product.description}</p>
+          <p className="mt-6 whitespace-pre-line break-words leading-7">{product.description}</p>
           <div className="mt-6 rounded-lg border bg-white p-4 text-sm text-muted-foreground">
             Sau khi thanh toán và đơn hàng hoàn tất, bạn sẽ nhận được tài khoản và mật khẩu trong trang chi tiết đơn hàng.
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border bg-white p-4"><h2 className="font-semibold">Chính sách bảo hành</h2><p className="mt-2 text-sm text-muted-foreground">{product.warranty_policy}</p></div>
-            <div className="rounded-lg border bg-white p-4"><h2 className="font-semibold">Hướng dẫn nhận hàng</h2><p className="mt-2 text-sm text-muted-foreground">{product.delivery_guide}</p></div>
+            <div className="rounded-lg border bg-white p-4"><h2 className="font-semibold">Chính sách bảo hành</h2><p className="mt-2 whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">{product.warranty_policy}</p></div>
+            <div className="rounded-lg border bg-white p-4"><h2 className="font-semibold">Hướng dẫn nhận hàng</h2><p className="mt-2 whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">{product.delivery_guide}</p></div>
           </div>
           <Button asChild size="lg" className="mt-6"><Link href={`/cart?productId=${product.id}`}>Mua ngay</Link></Button>
         </div>
