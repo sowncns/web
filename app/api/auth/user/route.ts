@@ -16,7 +16,6 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const { error } = await supabase.from("profiles").update({
     full_name: String(body.full_name || ""),
-    phone: String(body.phone || ""),
     updated_at: new Date().toISOString()
   }).eq("id", user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

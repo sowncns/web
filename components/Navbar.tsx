@@ -4,7 +4,7 @@ import { NavbarClient } from "@/components/NavbarClient";
 export async function Navbar() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = user ? await supabase.from("profiles").select("role,balance").eq("id", user.id).single() : { data: null };
+  const { data: profile } = user ? await supabase.from("profiles").select("role,balance,username,full_name").eq("id", user.id).single() : { data: null };
 
-  return <NavbarClient userEmail={user?.email} profile={profile} />;
+  return <NavbarClient signedIn={Boolean(user)} profile={profile} />;
 }

@@ -23,7 +23,7 @@ const adminLinks = [
   { href: "/admin/users", label: "Người dùng", icon: Users }
 ];
 
-export function NavbarClient({ userEmail, profile }: { userEmail?: string | null; profile?: any }) {
+export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profile?: any }) {
   const pathname = usePathname() || "/";
   const isAdmin = profile?.role === "ADMIN";
   const isAdminArea = pathname.startsWith("/admin") || isAdmin;
@@ -62,7 +62,7 @@ export function NavbarClient({ userEmail, profile }: { userEmail?: string | null
                 <Link href="/products" aria-label="Sản phẩm"><ShoppingBag className="h-5 w-5" /></Link>
               </Button>
             ) : null}
-            {userEmail ? (
+            {signedIn ? (
               <>
                 {!isAdminArea ? (
                   <Link href="/payment" className="hidden h-9 flex-col items-center justify-center rounded-md border border-sky-400 bg-sky-50 px-3 text-center text-xs font-semibold leading-tight text-primary shadow-sm sm:flex">
@@ -84,7 +84,7 @@ export function NavbarClient({ userEmail, profile }: { userEmail?: string | null
               </>
             )}
             <div className="hidden h-8 w-8 place-items-center rounded-full bg-orange-500 text-xs font-bold text-white sm:grid">
-              {userEmail?.slice(0, 1).toUpperCase() || "N"}
+              {(profile?.username || profile?.full_name || "N").slice(0, 1).toUpperCase()}
             </div>
           </div>
         </div>

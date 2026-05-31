@@ -23,8 +23,7 @@ export async function POST(request: Request) {
     const { data: order, error: orderError } = await supabaseAdmin.from("orders").insert({
       user_id: user?.id || null,
       customer_name: body.customerName,
-      customer_email: body.customerEmail,
-      customer_phone: body.customerPhone,
+      customer_email: profile?.username || profile?.email || user?.email || body.customerName,
       product_id: product.id,
       quantity: body.quantity,
       total_amount: totalAmount,
@@ -42,8 +41,7 @@ export async function POST(request: Request) {
       returnUrl: `${appUrl}/payment/success?orderCode=${orderCode}`,
       cancelUrl: `${appUrl}/payment/cancel?orderCode=${orderCode}`,
       buyerName: body.customerName,
-      buyerEmail: body.customerEmail,
-      buyerPhone: body.customerPhone,
+      buyerEmail: profile?.email || user?.email || undefined,
       items: [{ name: product.name, quantity: body.quantity, price: Number(product.price) }]
     });
     return NextResponse.json({

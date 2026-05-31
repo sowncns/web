@@ -3,8 +3,8 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
+  username text,
   full_name text,
-  phone text,
   balance numeric default 0 not null,
   role text default 'USER' check (role in ('USER', 'ADMIN')),
   status text default 'ACTIVE' check (status in ('ACTIVE', 'BANNED')),
@@ -13,6 +13,9 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles add column if not exists balance numeric default 0 not null;
+alter table public.profiles add column if not exists username text;
+alter table public.profiles drop column if exists phone;
+create unique index if not exists profiles_username_lower_idx on public.profiles (lower(username)) where username is not null;
 
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
@@ -55,7 +58,6 @@ create table if not exists public.orders (
   user_id uuid references auth.users(id) on delete set null,
   customer_name text,
   customer_email text,
-  customer_phone text,
   product_id uuid references public.products(id) on delete set null,
   quantity integer default 1,
   total_amount numeric not null,
@@ -80,6 +82,8 @@ create table if not exists public.order_deliveries (
   note_encrypted text,
   created_at timestamptz default now()
 );
+
+alter table public.orders drop column if exists customer_phone;
 
 do $$
 begin
@@ -165,8 +169,13 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, full_name, phone)
-  values (new.id, new.email, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'phone')
+  insert into public.profiles (id, email, username, full_name)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'username',
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name')
+  )
   on conflict (id) do nothing;
   return new;
 end;
@@ -233,13 +242,14 @@ begin
 end;
 $$;
 
+drop function if exists public.purchase_product_with_balance(uuid, uuid, integer, text, text, text, text);
+
 create or replace function public.purchase_product_with_balance(
   p_user_id uuid,
   p_product_id uuid,
   p_quantity integer,
   p_customer_name text,
   p_customer_email text,
-  p_customer_phone text,
   p_note text default ''
 )
 returns jsonb
@@ -296,7 +306,6 @@ begin
     user_id,
     customer_name,
     customer_email,
-    customer_phone,
     product_id,
     quantity,
     total_amount,
@@ -311,7 +320,6 @@ begin
     p_user_id,
     p_customer_name,
     p_customer_email,
-    p_customer_phone,
     p_product_id,
     p_quantity,
     v_total,

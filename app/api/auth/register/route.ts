@@ -1,40 +1,51 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAccountEmail, normalizeUsername } from "@/lib/account";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAppUrl } from "@/lib/url";
 import { registerSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   try {
     const parsed = registerSchema.parse(await request.json());
-    const email = parsed.email.trim().toLowerCase();
+    const username = normalizeUsername(parsed.username);
+    const email = getAccountEmail(username);
 
-    const { data: existingProfile, error: profileError } = await supabaseAdmin
+    const { data: existingUsernameProfile, error: usernameProfileError } = await supabaseAdmin
       .from("profiles")
       .select("id")
-      .ilike("email", email)
+      .ilike("username", username)
       .maybeSingle();
 
-    if (profileError) throw new Error(profileError.message);
-    if (existingProfile) {
-      return NextResponse.json({ error: "Email này đã được đăng ký. Vui lòng đăng nhập." }, { status: 409 });
+    if (usernameProfileError) throw new Error(usernameProfileError.message);
+    if (existingUsernameProfile) {
+      return NextResponse.json({ error: "Tài khoản này đã được sử dụng." }, { status: 409 });
     }
 
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: parsed.password,
-      options: {
-        emailRedirectTo: `${getAppUrl(request)}/account`,
-        data: { full_name: parsed.fullName, phone: parsed.phone }
+      email_confirm: true,
+      user_metadata: {
+        username,
+        full_name: parsed.fullName
       }
     });
 
-    if (error || !data.user) {
-      return NextResponse.json({ error: error?.message || "Không thể đăng ký" }, { status: 400 });
+    if (createError || !created.user) {
+      return NextResponse.json({ error: createError?.message || "Không thể đăng ký" }, { status: 400 });
     }
 
-    return NextResponse.json({ hasSession: Boolean(data.session) });
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: parsed.password
+    });
+
+    if (error || !data.session) {
+      return NextResponse.json({ error: error?.message || "Không thể đăng nhập sau khi đăng ký" }, { status: 400 });
+    }
+
+    return NextResponse.json({ hasSession: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Không thể đăng ký" }, { status: 400 });
   }

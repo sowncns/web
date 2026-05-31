@@ -42,7 +42,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             </div>
             <div className="mt-3 space-y-2 text-sm">
               <p>Sản phẩm: <strong>{o.products?.name}</strong></p>
-              <p>Email: <strong className="break-all">{o.customer_email}</strong></p>
+              <p>Tài khoản: <strong className="break-all">{o.customer_email}</strong></p>
               <p>Tổng: <strong>{formatCurrency(o.total_amount)}</strong></p>
               <div className="flex flex-wrap gap-2"><OrderStatusBadge status={o.payment_status} /><OrderStatusBadge status={o.order_status} /></div>
               <p className="text-xs text-muted-foreground">{formatDate(o.created_at)}</p>
@@ -51,7 +51,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         ))}
       </div>
       <div className="hidden overflow-x-auto rounded-lg border bg-white md:block">
-        <table className="w-full min-w-[960px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Mã</th><th>Sản phẩm</th><th>Email</th><th>Tổng</th><th>Thanh toán</th><th>Đơn</th><th>Ngày</th><th></th></tr></thead><tbody>{orders.map((o: any) => <tr key={o.id} className="border-t"><td className="p-3">{o.order_code}</td><td>{o.products?.name}</td><td>{o.customer_email}</td><td>{formatCurrency(o.total_amount)}</td><td><OrderStatusBadge status={o.payment_status} /></td><td><OrderStatusBadge status={o.order_status} /></td><td>{formatDate(o.created_at)}</td><td><Button asChild size="sm" variant="outline"><Link href={`/admin/orders/${o.id}`}>Xem</Link></Button></td></tr>)}</tbody></table>
+        <table className="w-full min-w-[960px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Mã</th><th>Sản phẩm</th><th>Tài khoản</th><th>Tổng</th><th>Thanh toán</th><th>Đơn</th><th>Ngày</th><th></th></tr></thead><tbody>{orders.map((o: any) => <tr key={o.id} className="border-t"><td className="p-3">{o.order_code}</td><td>{o.products?.name}</td><td>{o.customer_email}</td><td>{formatCurrency(o.total_amount)}</td><td><OrderStatusBadge status={o.payment_status} /></td><td><OrderStatusBadge status={o.order_status} /></td><td>{formatDate(o.created_at)}</td><td><Button asChild size="sm" variant="outline"><Link href={`/admin/orders/${o.id}`}>Xem</Link></Button></td></tr>)}</tbody></table>
       </div>
     </div>
   );

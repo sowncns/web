@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   if (searchParams.get("orderCode")) query = query.eq("order_code", Number(searchParams.get("orderCode")));
   const search = searchParams.get("search");
   if (search) query = /^\d+$/.test(search)
-    ? query.or(`customer_email.ilike.%${search}%,customer_phone.ilike.%${search}%,order_code.eq.${search}`)
-    : query.or(`customer_email.ilike.%${search}%,customer_phone.ilike.%${search}%`);
+    ? query.or(`customer_email.ilike.%${search}%,order_code.eq.${search}`)
+    : query.or(`customer_email.ilike.%${search}%`);
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json(data);

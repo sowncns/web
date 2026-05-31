@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Vui lòng đăng nhập để nạp tiền" }, { status: 401 });
 
-    const { data: profile } = await supabase.from("profiles").select("status,email,full_name,phone").eq("id", user.id).single();
+    const { data: profile } = await supabase.from("profiles").select("status,email,username,full_name").eq("id", user.id).single();
     if (profile?.status === "BANNED") return NextResponse.json({ error: "Tài khoản đã bị khóa" }, { status: 403 });
 
     const orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 90 + 10)}`.slice(0, 15));
@@ -34,9 +34,8 @@ export async function POST(request: Request) {
       description,
       returnUrl: `${appUrl}/payment?status=success&orderCode=${orderCode}`,
       cancelUrl: `${appUrl}/payment?status=cancel&orderCode=${orderCode}`,
-      buyerName: profile?.full_name || user.email || "Khach hang",
+      buyerName: profile?.full_name || profile?.username || "Khach hang",
       buyerEmail: profile?.email || user.email || undefined,
-      buyerPhone: profile?.phone || undefined,
       items: [{ name: "Nap so du SHOPMMOGIARE", quantity: 1, price: body.amount }]
     });
 

@@ -1,9 +1,8 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
+  username: z.string().trim().min(6, "Tài khoản tối thiểu 6 ký tự").regex(/^[a-zA-Z0-9._-]+$/, "Tài khoản chỉ gồm chữ, số, dấu chấm, gạch ngang hoặc gạch dưới"),
   fullName: z.string().min(2, "Vui lòng nhập họ tên"),
-  email: z.string().email("Email không hợp lệ"),
-  phone: z.string().min(8, "Số điện thoại không hợp lệ"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
   confirmPassword: z.string().min(6, "Vui lòng xác nhận mật khẩu")
 }).refine((data) => data.password === data.confirmPassword, {
@@ -12,14 +11,12 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
+  username: z.string().trim().min(6, "Vui lòng nhập tài khoản"),
   password: z.string().min(1, "Vui lòng nhập mật khẩu")
 });
 
 export const customerSchema = z.object({
   customerName: z.string().min(2, "Vui lòng nhập họ tên"),
-  customerEmail: z.string().email("Email không hợp lệ"),
-  customerPhone: z.string().min(8, "Số điện thoại không hợp lệ"),
   note: z.string().optional().default("")
 });
 
