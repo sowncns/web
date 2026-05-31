@@ -18,7 +18,7 @@ export function LoginForm() {
 
   async function signInWithGoogle() {
     setGoogleLoading(true);
-    const next = params.get("next") || "/account";
+    const next = params.get("next") || "/";
     window.location.href = `/api/auth/google?next=${encodeURIComponent(next)}`;
   }
 
@@ -83,7 +83,7 @@ export function RegisterForm() {
 
   async function signInWithGoogle() {
     setGoogleLoading(true);
-    window.location.href = "/api/auth/google?next=/account";
+    window.location.href = "/api/auth/google?next=/";
   }
 
   async function submit(formData: FormData) {

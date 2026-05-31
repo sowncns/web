@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 
 function getSafeNext(request: Request) {
   const { searchParams } = new URL(request.url);
-  const next = searchParams.get("next") || "/account";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/account";
+  const next = searchParams.get("next") || "/";
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
 }
 
 function makeGoogleUsername(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
