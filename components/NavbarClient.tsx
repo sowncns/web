@@ -70,6 +70,9 @@ export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profil
                     <span>{formatCurrency(Number(profile?.balance || 0)).replace(/\s/g, " ")}</span>
                   </Link>
                 ) : null}
+                <div className="hidden h-8 w-8 place-items-center rounded-full bg-orange-500 text-xs font-bold text-white sm:grid">
+                  {(profile?.username || profile?.full_name || "N").slice(0, 1).toUpperCase()}
+                </div>
                 <Button asChild variant="outline" size="sm" className="px-2 sm:px-3">
                   <Link href="/account"><User className="h-4 w-4" /> <span className="hidden sm:inline">Tài khoản</span></Link>
                 </Button>
@@ -80,12 +83,9 @@ export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profil
             ) : (
               <>
                 <Button asChild variant="ghost" size="sm"><Link href="/login">Đăng nhập</Link></Button>
-                <Button asChild size="sm"><Link href="/register">Đăng ký</Link></Button>
+                <Button asChild size="sm" className="rounded-full px-5"><Link href="/register">Đăng ký</Link></Button>
               </>
             )}
-            <div className="hidden h-8 w-8 place-items-center rounded-full bg-orange-500 text-xs font-bold text-white sm:grid">
-              {(profile?.username || profile?.full_name || "N").slice(0, 1).toUpperCase()}
-            </div>
           </div>
         </div>
       </header>
