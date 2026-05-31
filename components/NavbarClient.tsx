@@ -26,8 +26,8 @@ const adminLinks = [
 export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profile?: any }) {
   const pathname = usePathname() || "/";
   const isAdmin = profile?.role === "ADMIN";
-  const isAdminArea = pathname.startsWith("/admin") || isAdmin;
-  const sidebarLinks = isAdmin ? adminLinks : userLinks;
+  const isAdminArea = pathname.startsWith("/admin");
+  const sidebarLinks = isAdminArea ? adminLinks : userLinks;
   const bottomLinks = sidebarLinks.slice(0, 5);
 
   return (
