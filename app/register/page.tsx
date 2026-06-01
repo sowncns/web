@@ -1,7 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { RegisterForm } from "@/components/AuthForms";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const user = await getCurrentUser();
+  if (user) {
+    const profile = await getCurrentProfile();
+    redirect(profile?.role === "ADMIN" ? "/admin" : "/");
+  }
+
   return (
     <div className="container-page grid min-h-[calc(100vh-8rem)] place-items-center py-10">
       <div className="w-full max-w-md">
