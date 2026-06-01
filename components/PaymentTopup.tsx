@@ -8,7 +8,7 @@ import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-const amounts = [50000, 100000, 250000, 500000, 1000000, 2000000, 5000000];
+const amounts = [10000, 20000, 50000, 100000, 250000, 500000, 1000000, 2000000, 5000000];
 
 type PayOSPayment = {
   qrCode?: string;
@@ -52,7 +52,7 @@ function getQrImageSrc(payment: PayOSPayment | null, checkoutUrl: string) {
 
 export function PaymentTopup({ balance, topups }: { balance: number; topups: Topup[] }) {
   const router = useRouter();
-  const [amount, setAmount] = useState(50000);
+  const [amount, setAmount] = useState(10000);
   const [opened, setOpened] = useState(false);
   const [tab, setTab] = useState<"qr" | "bank">("qr");
   const [loading, setLoading] = useState(false);

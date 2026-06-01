@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { LogIn } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ export function LoginForm() {
   const params = useSearchParams() ?? new URLSearchParams();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const busy = loading || googleLoading;
 
   async function signInWithGoogle() {
     setGoogleLoading(true);
@@ -30,19 +31,24 @@ export function LoginForm() {
       setLoading(false);
       return;
     }
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed.data)
-    });
-    const result = await response.json();
-    setLoading(false);
-    if (!response.ok) {
-      toast.error(result.error || "Tài khoản hoặc mật khẩu không đúng");
-      return;
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast.error(result.error || "Tài khoản hoặc mật khẩu không đúng");
+        setLoading(false);
+        return;
+      }
+      router.push(params.get("next") || (result.role === "ADMIN" ? "/admin" : "/"));
+      router.refresh();
+    } catch {
+      toast.error("Không thể kết nối máy chủ");
+      setLoading(false);
     }
-    router.push(params.get("next") || (result.role === "ADMIN" ? "/admin" : "/"));
-    router.refresh();
   }
 
   return (
@@ -53,9 +59,12 @@ export function LoginForm() {
       </CardHeader>
       <CardContent className="space-y-4">
         <form action={submit} className="space-y-4">
-          <div className="space-y-2"><Label>Tài khoản</Label><Input name="username" minLength={6} required /></div>
-          <div className="space-y-2"><Label>Mật khẩu</Label><Input name="password" type="password" required /></div>
-          <Button className="w-full" disabled={loading}>{loading ? "Đang đăng nhập..." : "Đăng nhập"}</Button>
+          <div className="space-y-2"><Label>Tài khoản</Label><Input name="username" minLength={6} disabled={busy} required /></div>
+          <div className="space-y-2"><Label>Mật khẩu</Label><Input name="password" type="password" disabled={busy} required /></div>
+          <Button className="w-full" disabled={busy}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          </Button>
         </form>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="h-px flex-1 bg-border" />
@@ -65,10 +74,10 @@ export function LoginForm() {
         <Button
           type="button"
           className="w-full border border-red-200 bg-red-50 text-red-700 shadow-sm hover:bg-red-100 hover:text-red-800"
-          disabled={googleLoading}
+          disabled={busy}
           onClick={signInWithGoogle}
         >
-          <LogIn className="h-4 w-4" />
+          {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
           {googleLoading ? "Đang chuyển hướng..." : "Đăng nhập bằng Google"}
         </Button>
       </CardContent>
@@ -80,6 +89,7 @@ export function RegisterForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const busy = loading || googleLoading;
 
   async function signInWithGoogle() {
     setGoogleLoading(true);
@@ -100,20 +110,24 @@ export function RegisterForm() {
       setLoading(false);
       return;
     }
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed.data)
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      toast.error(result.error || "Không thể đăng ký");
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast.error(result.error || "Không thể đăng ký");
+        setLoading(false);
+        return;
+      }
+      router.push("/account");
+      router.refresh();
+    } catch {
+      toast.error("Không thể kết nối máy chủ");
       setLoading(false);
-      return;
     }
-    setLoading(false);
-    router.push("/account");
-    router.refresh();
   }
 
   return (
@@ -124,11 +138,14 @@ export function RegisterForm() {
       </CardHeader>
       <CardContent className="space-y-4">
         <form action={submit} className="space-y-4">
-          <div className="space-y-2"><Label>Họ tên</Label><Input name="fullName" required /></div>
-          <div className="space-y-2"><Label>Tài khoản</Label><Input name="username" minLength={6} required /></div>
-          <div className="space-y-2"><Label>Mật khẩu</Label><Input name="password" type="password" required /></div>
-          <div className="space-y-2"><Label>Xác nhận mật khẩu</Label><Input name="confirmPassword" type="password" required /></div>
-          <Button className="w-full" disabled={loading}>{loading ? "Đang tạo tài khoản..." : "Đăng ký"}</Button>
+          <div className="space-y-2"><Label>Họ tên</Label><Input name="fullName" disabled={busy} required /></div>
+          <div className="space-y-2"><Label>Tài khoản</Label><Input name="username" minLength={6} disabled={busy} required /></div>
+          <div className="space-y-2"><Label>Mật khẩu</Label><Input name="password" type="password" disabled={busy} required /></div>
+          <div className="space-y-2"><Label>Xác nhận mật khẩu</Label><Input name="confirmPassword" type="password" disabled={busy} required /></div>
+          <Button className="w-full" disabled={busy}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {loading ? "Đang tạo tài khoản..." : "Đăng ký"}
+          </Button>
         </form>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="h-px flex-1 bg-border" />
@@ -138,10 +155,10 @@ export function RegisterForm() {
         <Button
           type="button"
           className="w-full border border-red-200 bg-red-50 text-red-700 shadow-sm hover:bg-red-100 hover:text-red-800"
-          disabled={googleLoading}
+          disabled={busy}
           onClick={signInWithGoogle}
         >
-          <LogIn className="h-4 w-4" />
+          {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
           {googleLoading ? "Đang chuyển hướng..." : "Tiếp tục bằng Google"}
         </Button>
       </CardContent>
