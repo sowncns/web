@@ -8,7 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function PaymentSuccessPage({ searchParams }: { searchParams: { orderCode?: string } }) {
   const supabase = createClient();
-  const { data: order } = searchParams.orderCode ? await supabase.from("orders").select("*").eq("order_code", Number(searchParams.orderCode)).single() : { data: null };
+  const { data: order } = searchParams.orderCode ? await supabase.from("orders").select("*, products(categories(category_type))").eq("order_code", Number(searchParams.orderCode)).single() : { data: null };
+  const isTemplate = order?.products?.categories?.category_type === "TEMPLATE";
   const done = order?.payment_status === "PAID" && order?.order_status === "COMPLETED";
   const delivery = done ? { username: decryptText(order.delivery_username_encrypted), password: decryptText(order.delivery_password_encrypted), note: decryptText(order.delivery_note_encrypted) } : null;
   return (
@@ -20,13 +21,13 @@ export default async function PaymentSuccessPage({ searchParams }: { searchParam
           <p className="mt-2 text-muted-foreground">Mã đơn hàng: {searchParams.orderCode || "-"}</p>
           {delivery ? (
             <div className="mt-5 rounded-lg border bg-background p-4 text-left text-sm">
-              <p>Tài khoản: <strong>{delivery.username}</strong></p>
-              <p>Mật khẩu: <strong>{delivery.password}</strong></p>
-              <p>Ghi chú: {delivery.note}</p>
-              <div className="mt-3 flex gap-2"><CopyButton value={delivery.username} label="tài khoản" /><CopyButton value={delivery.password} label="mật khẩu" /></div>
+              <p>{isTemplate ? "Link tải" : "Tài khoản"}: <strong>{delivery.username}</strong></p>
+              <p>{isTemplate ? "Mật khẩu giải nén" : "Mật khẩu"}: <strong>{delivery.password}</strong></p>
+              <p>{isTemplate ? "Hướng dẫn / License" : "Ghi chú"}: {delivery.note}</p>
+              <div className="mt-3 flex gap-2"><CopyButton value={delivery.username} label={isTemplate ? "link tải" : "tài khoản"} /><CopyButton value={delivery.password} label={isTemplate ? "mật khẩu giải nén" : "mật khẩu"} /></div>
             </div>
           ) : (
-            <p className="mt-4 text-sm text-muted-foreground">Đơn hàng đang được xử lý. Tài khoản và mật khẩu sẽ hiển thị tại chi tiết đơn hàng sau khi admin hoàn tất.</p>
+            <p className="mt-4 text-sm text-muted-foreground">Đơn hàng đang được xử lý. {isTemplate ? "Link tải và mật khẩu giải nén" : "Tài khoản và mật khẩu"} sẽ hiển thị tại chi tiết đơn hàng sau khi hoàn tất.</p>
           )}
           <Button asChild className="mt-6"><Link href="/orders">Xem đơn hàng</Link></Button>
         </CardContent>

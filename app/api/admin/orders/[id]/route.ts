@@ -37,7 +37,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (body.action === "auto_delivery") {
     const needed = isTemplate ? 1 : Number(order.quantity || 1);
     const { data: stockItems } = await supabaseAdmin.from("stock_items").select("*").eq("product_id", order.product_id).eq("status", "AVAILABLE").order("created_at", { ascending: true }).limit(needed);
-    if (!stockItems?.length || stockItems.length < needed) return NextResponse.json({ error: `Sản phẩm này đã hết ${itemLabel} trong kho. Vui lòng cấp thủ công hoặc bổ sung kho.` }, { status: 409 });
+    if (!stockItems?.length || stockItems.length < needed) {
+      return NextResponse.json({ error: isTemplate ? "Template này chưa có link tải trong kho. Vui lòng thêm 1 dòng link tải|mật khẩu|hướng dẫn." : "Sản phẩm này đã hết tài khoản trong kho. Vui lòng cấp thủ công hoặc bổ sung kho." }, { status: 409 });
+    }
     const deliveries = stockItems.map((stock) => ({
       order_id: order.id,
       username_encrypted: encryptText(decryptText(stock.username_encrypted)),
@@ -55,7 +57,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       order_status: "COMPLETED",
       updated_at: new Date().toISOString()
     }).eq("id", order.id);
-    await supabaseAdmin.from("stock_items").update({ status: "USED", used_by_order_id: order.id, used_at: new Date().toISOString() }).in("id", stockItems.map((stock) => stock.id));
+    if (!isTemplate) {
+      await supabaseAdmin.from("stock_items").update({ status: "USED", used_by_order_id: order.id, used_at: new Date().toISOString() }).in("id", stockItems.map((stock) => stock.id));
+    }
     return NextResponse.json({ ok: true });
   }
   await supabaseAdmin.from("order_deliveries").delete().eq("order_id", order.id);

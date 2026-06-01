@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
+import { deliverTemplateOrder } from "@/lib/delivery";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
           paid_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).eq("id", order.id);
+        await deliverTemplateOrder(order.id);
       }
       return NextResponse.json({ success: true });
     }

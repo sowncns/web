@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { deliverTemplateOrder, isTemplateProduct } from "@/lib/delivery";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { z } from "zod";
 
@@ -7,11 +8,6 @@ const purchaseSchema = z.object({
   productId: z.string().uuid("Sản phẩm không hợp lệ"),
   quantity: z.coerce.number().int().min(1).max(20)
 });
-
-function getCategoryType(product: any) {
-  const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
-  return category?.category_type;
-}
 
 export async function POST(request: Request) {
   try {
@@ -23,13 +19,18 @@ export async function POST(request: Request) {
     const { data: profile } = await supabase.from("profiles").select("status,email,username,full_name").eq("id", user.id).single();
     if (profile?.status === "BANNED") return NextResponse.json({ error: "Tài khoản đã bị khóa" }, { status: 403 });
 
-    const { data: product } = await supabaseAdmin
-      .from("products")
-      .select("id, categories(category_type)")
-      .eq("id", body.productId)
-      .single();
-    const isTemplate = getCategoryType(product) === "TEMPLATE";
+    const isTemplate = await isTemplateProduct(body.productId);
     const quantity = isTemplate ? 1 : body.quantity;
+    if (isTemplate) {
+      const { data: stock } = await supabaseAdmin
+        .from("stock_items")
+        .select("id")
+        .eq("product_id", body.productId)
+        .eq("status", "AVAILABLE")
+        .limit(1)
+        .maybeSingle();
+      if (!stock) return NextResponse.json({ error: "Template này chưa có link tải trong kho. Vui lòng liên hệ admin." }, { status: 409 });
+    }
 
     const { data, error } = await supabaseAdmin.rpc("purchase_product_with_balance", {
       p_user_id: user.id,
@@ -41,6 +42,12 @@ export async function POST(request: Request) {
     });
 
     if (error) throw new Error(error.message);
+    if (isTemplate && data?.orderId) {
+      const delivery = await deliverTemplateOrder(data.orderId);
+      if (!delivery.delivered && delivery.reason === "NO_TEMPLATE_STOCK") {
+        return NextResponse.json({ error: "Template này chưa có link tải trong kho. Vui lòng liên hệ admin." }, { status: 409 });
+      }
+    }
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Không thể mua hàng bằng số dư" }, { status: 400 });

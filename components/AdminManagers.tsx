@@ -179,6 +179,78 @@ export function StockForm({ products }: { products: any[] }) {
   );
 }
 
+export function StockRowActions({ stock, products }: { stock: any; products: any[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  async function update(formData: FormData) {
+    try {
+      await send(`/api/admin/stocks/${stock.id}`, "PATCH", {
+        product_id: formData.get("product_id"),
+        username: formData.get("username"),
+        password: formData.get("password"),
+        note: formData.get("note"),
+        duration: formData.get("duration"),
+        status: formData.get("status")
+      });
+      toast.success("Đã cập nhật kho");
+      setOpen(false);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không cập nhật được");
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Xóa dòng kho này? Thao tác này không thể hoàn tác.")) return;
+    try {
+      await fetch(`/api/admin/stocks/${stock.id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
+      });
+      toast.success("Đã xóa dòng kho");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không xóa được");
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setOpen((value) => !value)}>
+          <Pencil className="h-4 w-4" />
+          {open ? "Đóng" : "Sửa"}
+        </Button>
+        <Button type="button" variant="destructive" size="sm" onClick={remove}>
+          <Trash2 className="h-4 w-4" />
+          Xóa
+        </Button>
+      </div>
+      {open ? (
+        <form action={update} className="grid min-w-[560px] gap-2 rounded-md border bg-slate-50 p-3">
+          <select name="product_id" defaultValue={stock.product_id} className="h-9 rounded-md border-input text-sm">
+            {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+          </select>
+          <div className="grid gap-2 md:grid-cols-3">
+            <Input name="username" defaultValue={stock.username} placeholder="tài khoản/link tải" required />
+            <Input name="password" defaultValue={stock.password} placeholder="mật khẩu" required />
+            <Input name="duration" defaultValue={stock.duration || ""} placeholder="thời hạn" />
+          </div>
+          <Textarea name="note" defaultValue={stock.note || ""} placeholder="ghi chú/hướng dẫn" />
+          <div className="flex flex-wrap gap-2">
+            <select name="status" defaultValue={stock.status} className="h-9 rounded-md border-input text-sm">
+              <option value="AVAILABLE">Còn hàng</option>
+              <option value="USED">Đã dùng</option>
+              <option value="DISABLED">Đã tắt</option>
+            </select>
+            <Button size="sm">Lưu thay đổi</Button>
+          </div>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
 export function OrderAdminActions({ orderId, quantity, productType = "ACCOUNT" }: { orderId: string; quantity: number; productType?: string }) {
   const router = useRouter();
   const isTemplate = productType === "TEMPLATE";

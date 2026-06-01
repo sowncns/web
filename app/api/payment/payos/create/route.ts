@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
+import { isTemplateProduct } from "@/lib/delivery";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAppUrl } from "@/lib/url";
@@ -18,14 +19,26 @@ export async function POST(request: Request) {
     }
     const { data: product, error: productError } = await supabaseAdmin.from("products").select("*").eq("id", body.productId).eq("is_active", true).single();
     if (productError || !product) return NextResponse.json({ error: "Sản phẩm không khả dụng" }, { status: 404 });
-    const totalAmount = Number(product.price) * body.quantity;
+    const isTemplate = await isTemplateProduct(product.id);
+    const quantity = isTemplate ? 1 : body.quantity;
+    if (isTemplate) {
+      const { data: stock } = await supabaseAdmin
+        .from("stock_items")
+        .select("id")
+        .eq("product_id", product.id)
+        .eq("status", "AVAILABLE")
+        .limit(1)
+        .maybeSingle();
+      if (!stock) return NextResponse.json({ error: "Template này chưa có link tải trong kho. Vui lòng liên hệ admin." }, { status: 409 });
+    }
+    const totalAmount = Number(product.price) * quantity;
     const orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 90 + 10)}`.slice(0, 15));
     const { data: order, error: orderError } = await supabaseAdmin.from("orders").insert({
       user_id: user?.id || null,
       customer_name: body.customerName,
       customer_email: profile?.username || profile?.email || user?.email || body.customerName,
       product_id: product.id,
-      quantity: body.quantity,
+      quantity,
       total_amount: totalAmount,
       order_code: orderCode,
       note: body.note,
@@ -42,7 +55,7 @@ export async function POST(request: Request) {
       cancelUrl: `${appUrl}/payment/cancel?orderCode=${orderCode}`,
       buyerName: body.customerName,
       buyerEmail: profile?.email || user?.email || undefined,
-      items: [{ name: product.name, quantity: body.quantity, price: Number(product.price) }]
+      items: [{ name: product.name, quantity, price: Number(product.price) }]
     });
     return NextResponse.json({
       orderId: order.id,
