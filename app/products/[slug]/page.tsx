@@ -9,10 +9,21 @@ import { formatCurrency } from "@/lib/utils";
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
   const supabase = createClient();
-  const { data: product } = await supabase.from("products").select("*, categories(category_type)").eq("slug", params.slug).eq("is_active", true).single();
+  const { data: productData } = await supabase
+    .from("products")
+    .select("id,name,slug,description,image_url,price,duration,warranty_policy,delivery_guide,categories(category_type)")
+    .eq("slug", params.slug)
+    .eq("is_active", true)
+    .single();
+  const product = productData as any;
   if (!product) notFound();
   const isTemplate = product.categories?.category_type === "TEMPLATE";
-  let relatedQuery = supabase.from("products").select("*, categories!inner(category_type)").eq("is_active", true).neq("id", product.id).limit(4);
+  let relatedQuery = supabase
+    .from("products")
+    .select("id,name,slug,image_url,price,duration,categories!inner(category_type)")
+    .eq("is_active", true)
+    .neq("id", product.id)
+    .limit(4);
   relatedQuery = relatedQuery.eq("categories.category_type", isTemplate ? "TEMPLATE" : "ACCOUNT");
   const { data: relatedData } = await relatedQuery;
   const related = relatedData ?? [];

@@ -7,7 +7,12 @@ export default async function CartPage({ searchParams }: { searchParams: { produ
   if (!searchParams.productId) redirect("/products");
   const { profile } = await requireActiveUser();
   const supabase = createClient();
-  const { data: product } = await supabase.from("products").select("*, categories(category_type)").eq("id", searchParams.productId).eq("is_active", true).single();
+  const { data: product } = await supabase
+    .from("products")
+    .select("id,name,price,duration,categories(category_type)")
+    .eq("id", searchParams.productId)
+    .eq("is_active", true)
+    .single();
   if (!product) redirect("/products");
   return <div className="container-page py-5"><CheckoutForm product={product} profile={profile} /></div>;
 }

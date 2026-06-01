@@ -1,10 +1,19 @@
 import { UserPatchForm } from "@/components/AdminManagers";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { Pagination } from "@/components/Pagination";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/utils";
 
-export default async function AdminUsersPage() {
-  const { data: usersData } = await supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false });
+export default async function AdminUsersPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const pageSize = 50;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data: usersData, count } = await supabaseAdmin
+    .from("profiles")
+    .select("id,username,full_name,role,status,created_at", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
   const users = usersData ?? [];
   return (
     <div className="space-y-6">
@@ -26,6 +35,7 @@ export default async function AdminUsersPage() {
       <div className="hidden overflow-x-auto rounded-lg border bg-white md:block">
         <table className="w-full min-w-[900px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th></th></tr></thead><tbody>{users.map((u: any) => <tr key={u.id} className="border-t"><td className="p-3">{u.username || "-"}</td><td>{u.full_name}</td><td><OrderStatusBadge status={u.role} /></td><td><OrderStatusBadge status={u.status} /></td><td>{formatDate(u.created_at)}</td><td><UserPatchForm user={u} /></td></tr>)}</tbody></table>
       </div>
+      <Pagination basePath="/admin/users" page={page} pageSize={pageSize} total={count} searchParams={searchParams} />
     </div>
   );
 }

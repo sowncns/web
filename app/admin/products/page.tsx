@@ -1,13 +1,22 @@
 import { ProductForm, ProductUpdatePanel } from "@/components/AdminManagers";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { Pagination } from "@/components/Pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils";
 
-export default async function AdminProductsPage() {
-  const [{ data: productsData }, { data: categoriesData }] = await Promise.all([
-    supabaseAdmin.from("products").select("*, categories(name, category_type)").order("created_at", { ascending: false }),
-    supabaseAdmin.from("categories").select("*").order("name")
+export default async function AdminProductsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const pageSize = 25;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const [{ data: productsData, count }, { data: categoriesData }] = await Promise.all([
+    supabaseAdmin
+      .from("products")
+      .select("id,category_id,name,slug,description,image_url,price,duration,warranty_policy,delivery_guide,is_active,created_at,categories(name, category_type)", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to),
+    supabaseAdmin.from("categories").select("id,name,slug,category_type").order("name")
   ]);
   const products = productsData ?? [];
   const categories = categoriesData ?? [];
@@ -36,6 +45,7 @@ export default async function AdminProductsPage() {
           </Card>
         ))}
       </div>
+      <Pagination basePath="/admin/products" page={page} pageSize={pageSize} total={count} searchParams={searchParams} />
     </div>
   );
 }

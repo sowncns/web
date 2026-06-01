@@ -445,3 +445,10 @@ create index if not exists order_deliveries_order_id_idx on public.order_deliver
 create index if not exists wallet_topups_user_id_idx on public.wallet_topups(user_id);
 create index if not exists wallet_topups_order_code_idx on public.wallet_topups(order_code);
 create index if not exists stock_items_product_status_idx on public.stock_items(product_id, status);
+create index if not exists categories_type_name_idx on public.categories(category_type, name);
+create index if not exists products_active_created_idx on public.products(is_active, created_at desc);
+create index if not exists products_category_active_created_idx on public.products(category_id, is_active, created_at desc);
+create index if not exists orders_user_created_idx on public.orders(user_id, created_at desc);
+create index if not exists orders_status_created_idx on public.orders(payment_status, order_status, created_at desc);
+create index if not exists stock_items_status_created_idx on public.stock_items(status, created_at desc);
+create index if not exists wallet_topups_user_created_idx on public.wallet_topups(user_id, created_at desc);

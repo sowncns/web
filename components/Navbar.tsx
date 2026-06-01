@@ -1,10 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
 import { NavbarClient } from "@/components/NavbarClient";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 
 export async function Navbar() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = user ? await supabase.from("profiles").select("role,balance,username,full_name").eq("id", user.id).single() : { data: null };
+  const user = await getCurrentUser();
+  const profile = user ? await getCurrentProfile() : null;
 
   return <NavbarClient signedIn={Boolean(user)} profile={profile} />;
 }

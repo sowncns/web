@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { Pagination } from "@/components/Pagination";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { requireActiveUser } from "@/lib/auth";
@@ -10,11 +11,20 @@ import { requireActiveUser } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function OrdersPage() {
+export default async function OrdersPage({ searchParams }: { searchParams: { page?: string } }) {
   noStore();
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const pageSize = 25;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   const { user } = await requireActiveUser();
   const supabase = createClient();
-  const { data: ordersData } = await supabase.from("orders").select("*, products(name)").eq("user_id", user.id).order("created_at", { ascending: false });
+  const { data: ordersData, count } = await supabase
+    .from("orders")
+    .select("id,order_code,total_amount,payment_status,order_status,created_at,products(name)", { count: "exact" })
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .range(from, to);
   const orders = ordersData ?? [];
 
   return (
@@ -58,6 +68,9 @@ export default async function OrdersPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4">
+          <Pagination basePath="/orders" page={page} pageSize={pageSize} total={count} searchParams={searchParams} />
         </div>
         </>
       )}

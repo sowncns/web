@@ -4,17 +4,23 @@ import { AlertTriangle, CreditCard, Search, ShieldCheck, Wallet, Zap, ArrowRight
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductGrid } from "@/components/ProductGrid";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function HomePage() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = user ? await supabase.from("profiles").select("role,balance").eq("id", user.id).single() : { data: null };
+  const user = await getCurrentUser();
+  const profile = user ? await getCurrentProfile() : null;
   if (profile?.role === "ADMIN") {
     redirect("/admin");
   }
-  const { data: productsData } = await supabase.from("products").select("*").eq("is_active", true).limit(8);
+  const { data: productsData } = await supabase
+    .from("products")
+    .select("id,name,slug,image_url,price,duration,categories(category_type)")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(8);
   const products = productsData ?? [];
 
   return (

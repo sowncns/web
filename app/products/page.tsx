@@ -1,21 +1,31 @@
 import { ProductFilter } from "@/components/ProductFilter";
 import { ProductGrid } from "@/components/ProductGrid";
+import { Pagination } from "@/components/Pagination";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const supabase = createClient();
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const pageSize = 24;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   const productKind = searchParams.type === "template" ? "TEMPLATE" : "ACCOUNT";
   const isTemplatePage = productKind === "TEMPLATE";
   let categoriesQuery = supabase.from("categories").select("*").order("name");
   categoriesQuery = categoriesQuery.eq("category_type", productKind);
-  const { data: categoriesData } = await categoriesQuery;
-  const categories = categoriesData ?? [];
-  let query = supabase.from("products").select("*, categories!inner(slug,category_type)").eq("is_active", true).eq("categories.category_type", productKind);
+  let query = supabase
+    .from("products")
+    .select("id,name,slug,image_url,price,duration,is_active,categories!inner(slug,category_type)", { count: "exact" })
+    .eq("is_active", true)
+    .eq("categories.category_type", productKind)
+    .range(from, to);
   if (searchParams.search) query = query.ilike("name", `%${searchParams.search}%`);
   if (searchParams.category) query = query.eq("categories.slug", searchParams.category);
   if (searchParams.sort === "price_asc") query = query.order("price", { ascending: true });
   if (searchParams.sort === "price_desc") query = query.order("price", { ascending: false });
-  const { data: productsData } = await query;
+  if (!searchParams.sort) query = query.order("created_at", { ascending: false });
+  const [{ data: categoriesData }, { data: productsData, count }] = await Promise.all([categoriesQuery, query]);
+  const categories = categoriesData ?? [];
   const products = productsData ?? [];
 
   return (
@@ -26,6 +36,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Rec
       </div>
       <ProductFilter categories={categories as any} />
       <div className="mt-6"><ProductGrid products={products as any} /></div>
+      <div className="mt-6">
+        <Pagination basePath="/products" page={page} pageSize={pageSize} total={count} searchParams={searchParams} />
+      </div>
     </div>
   );
 }

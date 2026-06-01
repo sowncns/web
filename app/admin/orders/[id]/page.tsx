@@ -8,11 +8,16 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default async function AdminOrderDetailPage({ params }: { params: { id: string } }) {
-  const { data: order } = await supabaseAdmin.from("orders").select("*, products(name,categories(category_type))").eq("id", params.id).single();
+  const { data: orderData } = await supabaseAdmin
+    .from("orders")
+    .select("id,order_code,customer_name,customer_email,total_amount,payment_status,order_status,quantity,delivery_username_encrypted,delivery_password_encrypted,delivery_note_encrypted,created_at,products(name,categories(category_type))")
+    .eq("id", params.id)
+    .single();
+  const order = orderData as any;
   if (!order) notFound();
   const isTemplate = order.products?.categories?.category_type === "TEMPLATE";
   const done = order.order_status === "COMPLETED";
-  const { data: deliveryRows = [] } = done ? await supabaseAdmin.from("order_deliveries").select("*").eq("order_id", order.id).order("created_at") : { data: [] };
+  const { data: deliveryRows = [] } = done ? await supabaseAdmin.from("order_deliveries").select("username_encrypted,password_encrypted,note_encrypted").eq("order_id", order.id).order("created_at") : { data: [] };
   const deliveries = (deliveryRows || []).map((row: any) => ({ username: decryptText(row.username_encrypted), password: decryptText(row.password_encrypted), note: decryptText(row.note_encrypted) }));
   const legacyDelivery = done && !deliveries.length ? { username: decryptText(order.delivery_username_encrypted), password: decryptText(order.delivery_password_encrypted), note: decryptText(order.delivery_note_encrypted) } : null;
   return (

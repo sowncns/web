@@ -13,11 +13,17 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const { user } = await requireActiveUser();
   const supabase = createClient();
-  const { data: order } = await supabase.from("orders").select("*, products(name,slug,categories(category_type))").eq("id", params.id).eq("user_id", user.id).single();
+  const { data: orderData } = await supabase
+    .from("orders")
+    .select("id,order_code,total_amount,payment_status,order_status,quantity,delivery_username_encrypted,delivery_password_encrypted,delivery_note_encrypted,created_at,products(name,slug,categories(category_type))")
+    .eq("id", params.id)
+    .eq("user_id", user.id)
+    .single();
+  const order = orderData as any;
   if (!order) notFound();
   const isTemplate = order.products?.categories?.category_type === "TEMPLATE";
   const canView = order.payment_status === "PAID" && order.order_status === "COMPLETED";
-  const { data: deliveryRows = [] } = canView ? await supabase.from("order_deliveries").select("*").eq("order_id", order.id).order("created_at") : { data: [] };
+  const { data: deliveryRows = [] } = canView ? await supabase.from("order_deliveries").select("username_encrypted,password_encrypted,note_encrypted").eq("order_id", order.id).order("created_at") : { data: [] };
   const deliveries = (deliveryRows || []).map((row: any) => ({
     username: decryptText(row.username_encrypted),
     password: decryptText(row.password_encrypted),

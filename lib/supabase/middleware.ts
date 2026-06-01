@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user) {
+  if (user && (protectedRoute || adminRoute)) {
     const { data: profile } = await supabase.from("profiles").select("role,status").eq("id", user.id).single();
     if (profile?.status === "BANNED" && (protectedRoute || adminRoute)) {
       const url = request.nextUrl.clone();

@@ -3,18 +3,27 @@ import { unstable_noStore as noStore } from "next/cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { Pagination } from "@/components/Pagination";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: { orderCode?: string } }) {
+export default async function AdminOrdersPage({ searchParams }: { searchParams: { orderCode?: string; page?: string } }) {
   noStore();
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const pageSize = 50;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   const orderCode = searchParams.orderCode?.trim();
-  let query = supabaseAdmin.from("orders").select("*, products(name,categories(category_type))").order("created_at", { ascending: false }).limit(200);
+  let query = supabaseAdmin
+    .from("orders")
+    .select("id,order_code,customer_email,total_amount,payment_status,order_status,created_at,products(name,categories(category_type))", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
   if (orderCode) query = query.eq("order_code", Number(orderCode));
-  const { data: ordersData } = await query;
+  const { data: ordersData, count } = await query;
   const orders = ordersData ?? [];
   return (
     <div className="space-y-6">
@@ -54,6 +63,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       <div className="hidden overflow-x-auto rounded-lg border bg-white md:block">
         <table className="w-full min-w-[960px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Mã</th><th>Sản phẩm</th><th>Loại</th><th>Tài khoản</th><th>Tổng</th><th>Thanh toán</th><th>Đơn</th><th>Ngày</th><th></th></tr></thead><tbody>{orders.map((o: any) => <tr key={o.id} className="border-t"><td className="p-3">{o.order_code}</td><td>{o.products?.name}</td><td>{o.products?.categories?.category_type === "TEMPLATE" ? "Template" : "Tài khoản"}</td><td>{o.customer_email}</td><td>{formatCurrency(o.total_amount)}</td><td><OrderStatusBadge status={o.payment_status} /></td><td><OrderStatusBadge status={o.order_status} /></td><td>{formatDate(o.created_at)}</td><td><Button asChild size="sm" variant="outline"><Link href={`/admin/orders/${o.id}`}>Xem</Link></Button></td></tr>)}</tbody></table>
       </div>
+      <Pagination basePath="/admin/orders" page={page} pageSize={pageSize} total={count} searchParams={searchParams} />
     </div>
   );
 }

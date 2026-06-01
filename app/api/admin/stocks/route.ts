@@ -5,12 +5,29 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { maskUsername } from "@/lib/utils";
 import { stockImportSchema, stockSchema } from "@/lib/validations";
 
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await isAdminRequest();
   if (!admin.ok) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
-  const { data, error } = await supabaseAdmin.from("stock_items").select("*, products(name)").order("created_at", { ascending: false });
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page") || 1));
+  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || 50)));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  let query = supabaseAdmin
+    .from("stock_items")
+    .select("id,product_id,username_encrypted,duration,status,used_at,created_at,products(name)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  if (searchParams.get("product_id")) query = query.eq("product_id", searchParams.get("product_id"));
+  if (searchParams.get("status")) query = query.eq("status", searchParams.get("status"));
+  const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json((data || []).map((item: any) => ({ ...item, username_masked: maskUsername(decryptText(item.username_encrypted)), password_encrypted: undefined })));
+  return NextResponse.json({
+    data: (data || []).map((item: any) => ({ ...item, username_masked: maskUsername(decryptText(item.username_encrypted)), username_encrypted: undefined })),
+    count,
+    page,
+    pageSize
+  });
 }
 
 export async function POST(request: Request) {
