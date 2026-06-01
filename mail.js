@@ -64,5 +64,3 @@ async function main() {
 }
 
 main();
-
-// const client = new MailTD('td_462dd4bcbab3143a6f08d5a3f434adfeca6309a834d47aa0402b2518de64f4cc');
