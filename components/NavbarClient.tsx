@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LogOut, MessageCircle, Package, Receipt, ShoppingBag, Users, User } from "lucide-react";
+import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LayoutTemplate, LogOut, MessageCircle, Package, Receipt, ShoppingBag, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
 const userLinks = [
   { href: "/", label: "Tổng quan", icon: Home },
-  { href: "/products", label: "Sản phẩm", icon: Package },
+  { href: "/products", label: "Tài khoản", icon: Package },
+  { href: "/templates", label: "Template", icon: LayoutTemplate },
   { href: "/payment", label: "Nạp tiền", icon: CreditCard },
   { href: "/orders", label: "Lịch sử đơn", icon: History },
   { href: "/contact", label: "Liên hệ", icon: MessageCircle }
@@ -59,7 +60,7 @@ export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profil
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {!isAdminArea ? (
               <Button asChild variant="ghost" size="icon" className="sm:hidden">
-                <Link href="/products" aria-label="Sản phẩm"><ShoppingBag className="h-5 w-5" /></Link>
+                <Link href="/products" aria-label="Tài khoản"><ShoppingBag className="h-5 w-5" /></Link>
               </Button>
             ) : null}
             {signedIn ? (

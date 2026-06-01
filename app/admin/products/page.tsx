@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 
 export default async function AdminProductsPage() {
   const [{ data: productsData }, { data: categoriesData }] = await Promise.all([
-    supabaseAdmin.from("products").select("*, categories(name)").order("created_at", { ascending: false }),
+    supabaseAdmin.from("products").select("*, categories(name, category_type)").order("created_at", { ascending: false }),
     supabaseAdmin.from("categories").select("*").order("name")
   ]);
   const products = productsData ?? [];
@@ -25,7 +25,7 @@ export default async function AdminProductsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <CardTitle className="text-lg">{product.name}</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">{product.categories?.name || "Chưa có danh mục"} - {formatCurrency(product.price)} - {product.duration || "Theo gói"}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{product.categories?.category_type === "TEMPLATE" ? "Template" : "Tài khoản"} - {product.categories?.name || "Chưa có danh mục"} - {formatCurrency(product.price)} - {product.duration || "Theo gói"}</p>
                 </div>
                 <OrderStatusBadge status={product.is_active ? "AVAILABLE" : "DISABLED"} />
               </div>

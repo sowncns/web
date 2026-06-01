@@ -8,15 +8,18 @@ import { Input } from "@/components/ui/input";
 export function ProductFilter({ categories }: { categories: { id: string; name: string; slug: string }[] }) {
   const router = useRouter();
   const params = useSearchParams() ?? new URLSearchParams();
+  const isTemplatePage = params.get("type") === "template";
 
   function update(formData: FormData) {
     const next = new URLSearchParams();
     const search = String(formData.get("search") || "");
     const category = String(formData.get("category") || "");
     const sort = String(formData.get("sort") || "");
+    const type = params.get("type");
     if (search) next.set("search", search);
     if (category) next.set("category", category);
     if (sort) next.set("sort", sort);
+    if (type) next.set("type", type);
     router.push(`/products?${next.toString()}`);
   }
 
@@ -24,7 +27,7 @@ export function ProductFilter({ categories }: { categories: { id: string; name: 
     <form action={update} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[1fr_180px_180px_auto]">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input name="search" defaultValue={params.get("search") || ""} placeholder="Tìm theo tên sản phẩm" className="pl-9" />
+        <Input name="search" defaultValue={params.get("search") || ""} placeholder={isTemplatePage ? "Tìm theo tên template" : "Tìm theo tên tài khoản"} className="pl-9" />
       </div>
       <select name="category" defaultValue={params.get("category") || ""} className="h-10 rounded-md border-input text-sm">
         <option value="">Tất cả danh mục</option>

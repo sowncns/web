@@ -5,6 +5,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { orderPatchSchema } from "@/lib/validations";
 
 const DEFAULT_DELIVERY_NOTE = "đăng nhập trên điện thoại trước rồi quét mã đăng nhập trên PC";
+const TEMPLATE_DELIVERY_NOTE = "Tải file template, giải nén bằng mật khẩu được cấp và xem hướng dẫn sử dụng kèm theo.";
+
+function getCategoryType(product: any) {
+  const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+  return category?.category_type;
+}
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const admin = await isAdminRequest();
@@ -20,15 +26,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const body = orderPatchSchema.parse(await request.json());
   const { data: order } = await supabaseAdmin.from("orders").select("*").eq("id", params.id).single();
   if (!order) return NextResponse.json({ error: "Không tìm thấy đơn hàng" }, { status: 404 });
+  const { data: product } = await supabaseAdmin.from("products").select("categories(category_type)").eq("id", order.product_id).single();
+  const isTemplate = getCategoryType(product) === "TEMPLATE";
+  const itemLabel = isTemplate ? "template" : "tài khoản";
   if (body.action === "update_status") {
     await supabaseAdmin.from("orders").update({ order_status: body.order_status, updated_at: new Date().toISOString() }).eq("id", params.id);
     return NextResponse.json({ ok: true });
   }
-  if (order.payment_status !== "PAID") return NextResponse.json({ error: "Chỉ cấp tài khoản cho đơn đã thanh toán" }, { status: 400 });
+  if (order.payment_status !== "PAID") return NextResponse.json({ error: `Chỉ cấp ${itemLabel} cho đơn đã thanh toán` }, { status: 400 });
   if (body.action === "auto_delivery") {
-    const needed = Number(order.quantity || 1);
+    const needed = isTemplate ? 1 : Number(order.quantity || 1);
     const { data: stockItems } = await supabaseAdmin.from("stock_items").select("*").eq("product_id", order.product_id).eq("status", "AVAILABLE").order("created_at", { ascending: true }).limit(needed);
-    if (!stockItems?.length || stockItems.length < needed) return NextResponse.json({ error: "Sản phẩm này đã hết tài khoản trong kho. Vui lòng cấp thủ công hoặc bổ sung kho." }, { status: 409 });
+    if (!stockItems?.length || stockItems.length < needed) return NextResponse.json({ error: `Sản phẩm này đã hết ${itemLabel} trong kho. Vui lòng cấp thủ công hoặc bổ sung kho.` }, { status: 409 });
     const deliveries = stockItems.map((stock) => ({
       order_id: order.id,
       username_encrypted: encryptText(decryptText(stock.username_encrypted)),
@@ -54,16 +63,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const needed = Number(order.quantity || 1);
+  const needed = isTemplate ? 1 : Number(order.quantity || 1);
   if (lines.length !== needed) {
-    return NextResponse.json({ error: `Đơn này cần ${needed} tài khoản, bạn đã nhập ${lines.length} dòng hợp lệ.` }, { status: 400 });
+    return NextResponse.json({ error: `Đơn này cần ${needed} ${itemLabel}, bạn đã nhập ${lines.length} dòng hợp lệ.` }, { status: 400 });
   }
   const parsedLines = lines.map((line) => {
     const [username = "", password = "", ...noteParts] = line.split("|").map((part) => part.trim());
-    return { username, password, note: noteParts.join("|") || DEFAULT_DELIVERY_NOTE };
+    return { username, password, note: noteParts.join("|") || (isTemplate ? TEMPLATE_DELIVERY_NOTE : DEFAULT_DELIVERY_NOTE) };
   });
   if (parsedLines.some((line) => !line.username || !line.password)) {
-    return NextResponse.json({ error: "Mỗi dòng cần đúng dạng username|password|ghi chú" }, { status: 400 });
+    return NextResponse.json({ error: isTemplate ? "Mỗi dòng cần đúng dạng link tải|mật khẩu giải nén|hướng dẫn" : "Mỗi dòng cần đúng dạng username|password|ghi chú" }, { status: 400 });
   }
   const deliveries = parsedLines.map((line) => {
     return {

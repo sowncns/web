@@ -34,6 +34,9 @@ export default async function HomePage() {
             <Button asChild size="lg" className="rounded-full px-8 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-transform">
               <Link href="/products">Khám phá ngay <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
+            <Button asChild size="lg" variant="outline" className="rounded-full px-8">
+              <Link href="/templates">Xem template</Link>
+            </Button>
             <form action="/products" className="relative flex w-full max-w-sm sm:w-auto">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input name="search" placeholder="Tìm sản phẩm..." className="h-11 w-full rounded-full border-slate-200 bg-white pl-12 pr-4 shadow-sm focus-visible:ring-primary" />
@@ -77,7 +80,7 @@ export default async function HomePage() {
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black text-slate-900">Sản phẩm nổi bật</h2>
-            <p className="mt-2 text-slate-500">Được khách hàng tin dùng nhiều nhất</p>
+            <p className="mt-2 text-slate-500">Dịch vụ số và template landing page được khách hàng tin dùng</p>
           </div>
           <Button asChild variant="ghost" className="hidden sm:flex text-primary hover:bg-primary/10 hover:text-primary">
             <Link href="/products">Xem tất cả <ArrowRight className="ml-2 h-4 w-4" /></Link>

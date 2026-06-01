@@ -13,8 +13,10 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
-  const total = Number(product.price) * quantity;
-  const payload = { productId: product.id, quantity };
+  const isTemplate = product.categories?.category_type === "TEMPLATE";
+  const effectiveQuantity = isTemplate ? 1 : quantity;
+  const total = Number(product.price) * effectiveQuantity;
+  const payload = { productId: product.id, quantity: effectiveQuantity };
   const balance = Number(profile?.balance || 0);
   const hasEnoughBalance = balance >= total;
 
@@ -44,7 +46,7 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
         <div className="flex-1 space-y-6">
           <div className="glass rounded-2xl p-6">
             <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-slate-900">
-              <Package className="h-6 w-6 text-primary" /> Thông tin sản phẩm
+              <Package className="h-6 w-6 text-primary" /> {isTemplate ? "Thông tin template" : "Thông tin sản phẩm"}
             </h2>
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
               <div className="flex items-start gap-4">
@@ -53,26 +55,32 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-bold text-slate-900">{product.name}</p>
-                  <p className="mt-1 text-sm font-medium text-slate-500">{product.duration || "Theo gói"} • {formatCurrency(product.price)} / gói</p>
+                  <p className="mt-1 text-sm font-medium text-slate-500">{product.duration || (isTemplate ? "Trọn đời" : "Theo gói")} • {formatCurrency(product.price)} / gói</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-              <span className="font-semibold text-slate-700">Số lượng mua</span>
-              <div className="flex w-full items-center gap-2 sm:w-auto">
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                <Input
-                  className="h-10 min-w-0 flex-1 text-center font-bold sm:w-20 sm:flex-none"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={quantity}
-                  onChange={(event) => setQuantity(Math.max(1, Math.min(20, Number(event.target.value) || 1)))}
-                />
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={() => setQuantity(Math.min(20, quantity + 1))}>+</Button>
+            {isTemplate ? (
+              <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+                Template là sản phẩm tải xuống, mỗi lần mua sẽ nhận 1 bộ file đầy đủ.
               </div>
-            </div>
+            ) : (
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                <span className="font-semibold text-slate-700">Số lượng mua</span>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
+                  <Input
+                    className="h-10 min-w-0 flex-1 text-center font-bold sm:w-20 sm:flex-none"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={quantity}
+                    onChange={(event) => setQuantity(Math.max(1, Math.min(20, Number(event.target.value) || 1)))}
+                  />
+                  <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={() => setQuantity(Math.min(20, quantity + 1))}>+</Button>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="glass rounded-2xl p-6">
@@ -81,6 +89,7 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
             </h2>
             <p className="text-sm leading-relaxed text-slate-600">
               Giao dịch hoàn toàn tự động. Số dư sẽ bị trừ và đơn hàng sẽ được kích hoạt ngay lập tức sau khi nhấn thanh toán. Nếu có lỗi xảy ra, tiền sẽ được hoàn lại tự động.
+              {isTemplate ? " Sau khi đơn hoàn tất, bạn sẽ thấy link tải, mật khẩu giải nén và hướng dẫn sử dụng trong chi tiết đơn." : ""}
             </p>
           </div>
         </div>
@@ -95,7 +104,7 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Số lượng</span>
-                <span className="font-semibold text-slate-900">x{quantity}</span>
+                <span className="font-semibold text-slate-900">x{effectiveQuantity}</span>
               </div>
               <div className="flex justify-between pt-4">
                 <span className="font-bold text-slate-900">Tổng cộng</span>

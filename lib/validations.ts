@@ -51,7 +51,8 @@ export const productSchema = z.object({
 
 export const categorySchema = z.object({
   name: z.string().min(2),
-  slug: z.string().min(2)
+  slug: z.string().min(2),
+  category_type: z.enum(["ACCOUNT", "TEMPLATE"]).default("ACCOUNT")
 });
 
 export const stockSchema = z.object({

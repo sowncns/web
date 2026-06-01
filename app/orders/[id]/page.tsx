@@ -13,8 +13,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const { user } = await requireActiveUser();
   const supabase = createClient();
-  const { data: order } = await supabase.from("orders").select("*, products(name,slug)").eq("id", params.id).eq("user_id", user.id).single();
+  const { data: order } = await supabase.from("orders").select("*, products(name,slug,categories(category_type))").eq("id", params.id).eq("user_id", user.id).single();
   if (!order) notFound();
+  const isTemplate = order.products?.categories?.category_type === "TEMPLATE";
   const canView = order.payment_status === "PAID" && order.order_status === "COMPLETED";
   const { data: deliveryRows = [] } = canView ? await supabase.from("order_deliveries").select("*").eq("order_id", order.id).order("created_at") : { data: [] };
   const deliveries = (deliveryRows || []).map((row: any) => ({
@@ -63,33 +64,33 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </Card>
         </div>
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Tài khoản đã mua</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">{isTemplate ? "Template đã mua" : "Tài khoản đã mua"}</CardTitle></CardHeader>
           <CardContent>
             {deliveries.length || legacyDelivery ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 {(deliveries.length ? deliveries : [legacyDelivery]).map((delivery: any, index: number) => (
                   <div key={`${delivery.username}-${index}`} className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">
-                    <p className="font-semibold text-slate-950">Tài khoản #{index + 1}</p>
+                    <p className="font-semibold text-slate-950">{isTemplate ? "Template" : "Tài khoản"} #{index + 1}</p>
                     <div className="mt-3 space-y-3">
                       <div>
-                        <p className="text-xs text-muted-foreground">Tài khoản</p>
+                        <p className="text-xs text-muted-foreground">{isTemplate ? "Link tải" : "Tài khoản"}</p>
                         <p className="break-all font-semibold text-slate-950">{delivery.username}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Mật khẩu</p>
+                        <p className="text-xs text-muted-foreground">{isTemplate ? "Mật khẩu giải nén" : "Mật khẩu"}</p>
                         <p className="break-all font-semibold text-slate-950">{delivery.password}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Ghi chú</p>
+                        <p className="text-xs text-muted-foreground">{isTemplate ? "Hướng dẫn / License" : "Ghi chú"}</p>
                         <p className="leading-relaxed text-slate-800">{delivery.note || "Không có"}</p>
                       </div>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-2"><CopyButton value={delivery.username} label="tài khoản" /><CopyButton value={delivery.password} label="mật khẩu" /></div>
+                    <div className="mt-4 flex flex-wrap gap-2"><CopyButton value={delivery.username} label={isTemplate ? "link tải" : "tài khoản"} /><CopyButton value={delivery.password} label={isTemplate ? "mật khẩu giải nén" : "mật khẩu"} /></div>
                   </div>
                 ))}
               </div>
             ) : order.payment_status === "PAID" && order.order_status === "PROCESSING" ? (
-              <p className="text-sm text-muted-foreground">Đơn hàng của bạn đang được xử lý. Vui lòng chờ admin cấp tài khoản.</p>
+              <p className="text-sm text-muted-foreground">Đơn hàng của bạn đang được xử lý. Vui lòng chờ admin cấp {isTemplate ? "link tải template" : "tài khoản"}.</p>
             ) : (
               <p className="text-sm text-muted-foreground">Đơn hàng chưa được thanh toán.</p>
             )}

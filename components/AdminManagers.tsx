@@ -42,6 +42,11 @@ function readImageFile(file: File) {
 
 export function ProductForm({ categories, product }: { categories: any[]; product?: any }) {
   const router = useRouter();
+  const accountCategories = categories.filter((category) => (category.category_type || "ACCOUNT") === "ACCOUNT");
+  const templateCategories = categories.filter((category) => category.category_type === "TEMPLATE");
+  const initialCategory = categories.find((category) => category.id === product?.category_id);
+  const [selectedCategoryType, setSelectedCategoryType] = useState(initialCategory?.category_type || "ACCOUNT");
+  const isTemplate = selectedCategoryType === "TEMPLATE";
   async function submit(formData: FormData) {
     try {
       const form = product ? null : document.querySelector<HTMLFormElement>("[data-product-create-form='true']");
@@ -70,7 +75,26 @@ export function ProductForm({ categories, product }: { categories: any[]; produc
   return (
     <form action={submit} data-product-create-form={!product ? "true" : undefined} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2">
       <div className="space-y-1"><Label>Tên</Label><Input name="name" defaultValue={product?.name} required /></div>
-      <div className="space-y-1"><Label>Danh mục</Label><select name="category_id" defaultValue={product?.category_id || ""} className="h-10 w-full rounded-md border-input text-sm"><option value="">Chọn danh mục</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+      <div className="space-y-1">
+        <Label>Danh mục</Label>
+        <select
+          name="category_id"
+          defaultValue={product?.category_id || ""}
+          className="h-10 w-full rounded-md border-input text-sm"
+          onChange={(event) => {
+            const category = categories.find((item) => item.id === event.target.value);
+            setSelectedCategoryType(category?.category_type || "ACCOUNT");
+          }}
+        >
+          <option value="">Chọn danh mục</option>
+          <optgroup label="Tài khoản / license">
+            {accountCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </optgroup>
+          <optgroup label="Template website">
+            {templateCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </optgroup>
+        </select>
+      </div>
       <div className="space-y-1"><Label>Giá</Label><Input name="price" type="number" defaultValue={product?.price} required /></div>
       <div className="space-y-1"><Label>Thời hạn</Label><Input name="duration" defaultValue={product?.duration} /></div>
       <div className="space-y-1">
@@ -78,9 +102,16 @@ export function ProductForm({ categories, product }: { categories: any[]; produc
         <Input name="image_file" type="file" accept="image/*" />
         {product?.image_url ? <p className="text-xs text-muted-foreground">Đang có ảnh. Chọn file mới nếu muốn thay đổi.</p> : null}
       </div>
-      <div className="space-y-1 md:col-span-2"><Label>Mô tả</Label><Textarea name="description" defaultValue={product?.description} /></div>
-      <div className="space-y-1"><Label>Bảo hành</Label><Textarea name="warranty_policy" defaultValue={product?.warranty_policy} /></div>
-      <div className="space-y-1"><Label>Hướng dẫn nhận hàng</Label><Textarea name="delivery_guide" defaultValue={product?.delivery_guide} /></div>
+      <div className="space-y-1 md:col-span-2">
+        <Label>{isTemplate ? "Ảnh preview template" : "Mô tả"}</Label>
+        <Textarea
+          name="description"
+          defaultValue={product?.description}
+          placeholder={isTemplate ? "Dán link ảnh preview, mỗi dòng một ảnh" : "Nhập mô tả sản phẩm"}
+        />
+      </div>
+      <div className="space-y-1"><Label>{isTemplate ? "License sử dụng" : "Bảo hành"}</Label><Textarea name="warranty_policy" defaultValue={product?.warranty_policy} /></div>
+      <div className="space-y-1"><Label>Hướng dẫn nhận hàng / tải file</Label><Textarea name="delivery_guide" defaultValue={product?.delivery_guide} /></div>
       <label className="flex items-center gap-2 text-sm"><input name="is_active" type="checkbox" defaultChecked={product?.is_active ?? true} /> Đang bán</label>
       <Button>{product ? "Cập nhật" : "Thêm sản phẩm"}</Button>
     </form>
@@ -93,7 +124,8 @@ export function CategoryForm({ category }: { category?: any }) {
     try {
       await send(category ? `/api/admin/categories/${category.id}` : "/api/admin/categories", category ? "PATCH" : "POST", {
         name: formData.get("name"),
-        slug: formData.get("slug")
+        slug: formData.get("slug"),
+        category_type: formData.get("category_type")
       });
       toast.success("Đã lưu danh mục");
       router.refresh();
@@ -102,9 +134,13 @@ export function CategoryForm({ category }: { category?: any }) {
     }
   }
   return (
-    <form action={submit} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-[1fr_1fr_auto]">
+    <form action={submit} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-[1fr_1fr_180px_auto]">
       <Input name="name" placeholder="Tên danh mục" defaultValue={category?.name} required />
       <Input name="slug" placeholder="slug" defaultValue={category?.slug} required />
+      <select name="category_type" defaultValue={category?.category_type || "ACCOUNT"} className="h-10 rounded-md border-input text-sm">
+        <option value="ACCOUNT">Tài khoản</option>
+        <option value="TEMPLATE">Template</option>
+      </select>
       <Button>{category ? "Cập nhật" : "Thêm"}</Button>
     </form>
   );
@@ -137,19 +173,23 @@ export function StockForm({ products }: { products: any[] }) {
       <select name="product_id" className="h-10 w-full rounded-md border-input text-sm" required>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
       <Input name="duration" placeholder="Thời hạn" />
       <div className="grid gap-3 md:grid-cols-3"><Input name="username" placeholder="username/email" /><Input name="password" placeholder="password" /><Input name="note" placeholder="ghi chú" /></div>
-      <Textarea name="lines" placeholder="Import nhiều dòng: username|password|note" />
+      <Textarea name="lines" placeholder="Import nhiều dòng: username|password|note hoặc link tải|mật khẩu giải nén|hướng dẫn" />
       <Button>Thêm vào kho</Button>
     </form>
   );
 }
 
-export function OrderAdminActions({ orderId, quantity }: { orderId: string; quantity: number }) {
+export function OrderAdminActions({ orderId, quantity, productType = "ACCOUNT" }: { orderId: string; quantity: number; productType?: string }) {
   const router = useRouter();
-  const exampleLines = Array.from({ length: Math.min(quantity, 3) }, (_, index) => `username${index + 1}|password${index + 1}`).join("\n");
+  const isTemplate = productType === "TEMPLATE";
+  const itemLabel = isTemplate ? "template" : "tài khoản";
+  const neededQuantity = isTemplate ? 1 : quantity;
+  const lineHelp = isTemplate ? "Dạng: link tải|mật khẩu giải nén|hướng dẫn/license." : "Dạng: username|password|ghi chú.";
+  const exampleLines = Array.from({ length: Math.min(neededQuantity, 3) }, (_, index) => isTemplate ? `https://drive.google.com/file/d/template-${index + 1}|mat-khau-zip|Huong dan cai dat va license` : `username${index + 1}|password${index + 1}`).join("\n");
   async function autoDeliver() {
     try {
       await send(`/api/admin/orders/${orderId}`, "PATCH", { action: "auto_delivery" });
-      toast.success("Đã cấp tài khoản tự động");
+      toast.success(`Đã cấp ${itemLabel} tự động`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không cấp được");
@@ -158,7 +198,7 @@ export function OrderAdminActions({ orderId, quantity }: { orderId: string; quan
   async function manual(formData: FormData) {
     try {
       await send(`/api/admin/orders/${orderId}`, "PATCH", { action: "manual_delivery", lines: formData.get("lines") });
-      toast.success("Đã cấp tài khoản thủ công");
+      toast.success(`Đã cấp ${itemLabel} thủ công`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không cấp được");
@@ -167,16 +207,16 @@ export function OrderAdminActions({ orderId, quantity }: { orderId: string; quan
   return (
     <div className="space-y-4 rounded-lg border bg-white p-4">
       <div className="rounded-md border border-sky-100 bg-sky-50 p-3 text-sm font-semibold text-sky-900">
-        Đơn này cần cấp {quantity} tài khoản. Khi nhập thủ công, vui lòng nhập đúng {quantity} dòng.
+        Đơn này cần cấp {neededQuantity} {itemLabel}. Khi nhập thủ công, vui lòng nhập đúng {neededQuantity} dòng.
       </div>
-      <Button onClick={autoDeliver}>Cấp tài khoản tự động</Button>
+      <Button onClick={autoDeliver}>Cấp {itemLabel} tự động</Button>
       <form action={manual} className="space-y-3">
         <div className="space-y-1">
-          <Label>Cấp thủ công nhiều tài khoản</Label>
-          <Textarea name="lines" rows={Math.max(4, Math.min(quantity + 1, 10))} placeholder={`Cần ${quantity} dòng, mỗi dòng một tài khoản:\n${exampleLines}${quantity > 3 ? "\n..." : ""}`} required />
-          <p className="text-xs text-muted-foreground">Dạng: username|password|ghi chú. Nếu bỏ trống ghi chú, hệ thống tự dùng: đăng nhập trên điện thoại trước rồi quét mã đăng nhập trên PC.</p>
+          <Label>Cấp thủ công nhiều {itemLabel}</Label>
+          <Textarea name="lines" rows={Math.max(4, Math.min(neededQuantity + 1, 10))} placeholder={`Cần ${neededQuantity} dòng, mỗi dòng một ${itemLabel}:\n${exampleLines}${neededQuantity > 3 ? "\n..." : ""}`} required />
+          <p className="text-xs text-muted-foreground">{lineHelp} Nếu bỏ trống ghi chú, hệ thống sẽ dùng ghi chú mặc định.</p>
         </div>
-        <Button variant="secondary">Cấp tài khoản thủ công</Button>
+        <Button variant="secondary">Cấp {itemLabel} thủ công</Button>
       </form>
     </div>
   );
@@ -272,7 +312,8 @@ export function CategoryRowActions({ category }: { category: any }) {
     try {
       await send(`/api/admin/categories/${category.id}`, "PATCH", {
         name: formData.get("name"),
-        slug: formData.get("slug")
+        slug: formData.get("slug"),
+        category_type: formData.get("category_type")
       });
       toast.success("Đã cập nhật danh mục");
       router.refresh();
@@ -296,9 +337,13 @@ export function CategoryRowActions({ category }: { category: any }) {
 
   return (
     <div className="space-y-3">
-      <form action={update} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+      <form action={update} className="grid gap-2 sm:grid-cols-[1fr_1fr_160px_auto]">
         <Input name="name" defaultValue={category.name} />
         <Input name="slug" defaultValue={category.slug} />
+        <select name="category_type" defaultValue={category.category_type || "ACCOUNT"} className="h-9 rounded-md border-input text-sm">
+          <option value="ACCOUNT">Tài khoản</option>
+          <option value="TEMPLATE">Template</option>
+        </select>
         <Button size="sm"><Pencil className="h-4 w-4" /> Cập nhật</Button>
       </form>
       <Button type="button" variant="destructive" size="sm" onClick={remove}>

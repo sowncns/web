@@ -12,10 +12,12 @@ export type ProductCardData = {
   image_url: string | null;
   price: number | string;
   duration: string | null;
+  categories?: { category_type?: string | null } | null;
   stock_count?: number;
 };
 
 export function ProductCard({ product }: { product: ProductCardData }) {
+  const isTemplate = product.categories?.category_type === "TEMPLATE";
   return (
     <div className="group relative rounded-2xl bg-white p-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 border border-slate-100">
       <Link href={`/products/${product.slug}`} className="block overflow-hidden rounded-xl">
@@ -34,7 +36,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary"></span>
               </span>
-              Premium
+              {isTemplate ? "Template" : "Premium"}
             </span>
           </div>
         </div>
@@ -51,7 +53,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             </div>
             <div className="flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1">
               <PackageCheck className="h-3.5 w-3.5 text-emerald-500" />
-              {(product.stock_count ?? 0) > 0 ? "Còn hàng" : "Sẵn sàng cấp"}
+              {isTemplate ? "File tải" : (product.stock_count ?? 0) > 0 ? "Còn hàng" : "Sẵn sàng cấp"}
             </div>
           </div>
         </div>

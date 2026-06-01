@@ -21,8 +21,21 @@ create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text unique not null,
+  category_type text default 'ACCOUNT' check (category_type in ('ACCOUNT', 'TEMPLATE')),
   created_at timestamptz default now()
 );
+
+alter table public.categories add column if not exists category_type text default 'ACCOUNT';
+update public.categories set category_type = 'ACCOUNT' where category_type is null;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'categories_category_type_check'
+  ) then
+    alter table public.categories add constraint categories_category_type_check check (category_type in ('ACCOUNT', 'TEMPLATE'));
+  end if;
+end $$;
 
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
