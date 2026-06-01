@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cacheRemember, createCacheKey, getCacheVersion } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -8,20 +9,29 @@ export async function GET(request: Request) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   const supabase = createClient();
-  let query = supabase
-    .from("products")
-    .select("id,name,slug,image_url,price,duration,is_active,categories!inner(slug,name,category_type)", { count: "exact" })
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .range(from, to);
   const search = searchParams.get("search");
   const category = searchParams.get("category");
   const sort = searchParams.get("sort");
-  if (search) query = query.ilike("name", `%${search}%`);
-  if (category) query = query.eq("categories.slug", category);
-  if (sort === "price_asc") query = query.order("price", { ascending: true });
-  if (sort === "price_desc") query = query.order("price", { ascending: false });
-  const { data, count, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ data, count, page, pageSize });
+  const productsVersion = await getCacheVersion("products");
+  const result = await cacheRemember(
+    createCacheKey(["api-products", productsVersion, search, category, sort, page, pageSize]),
+    { ttl: 60 },
+    async () => {
+      let query = supabase
+        .from("products")
+        .select("id,name,slug,image_url,price,duration,is_active,categories!inner(slug,name,category_type)", { count: "exact" })
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (search) query = query.ilike("name", `%${search}%`);
+      if (category) query = query.eq("categories.slug", category);
+      if (sort === "price_asc") query = query.order("price", { ascending: true });
+      if (sort === "price_desc") query = query.order("price", { ascending: false });
+      const { data, count, error } = await query;
+      if (error) throw new Error(error.message);
+      return { data, count, page, pageSize };
+    }
+  ).catch((error) => ({ error: error instanceof Error ? error.message : "Không tải được sản phẩm" }));
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
+  return NextResponse.json(result);
 }

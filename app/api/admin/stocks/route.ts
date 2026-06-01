@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { encryptText, decryptText } from "@/lib/encryption";
 import { isAdminRequest } from "@/lib/auth";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { maskUsername } from "@/lib/utils";
 import { stockImportSchema, stockSchema } from "@/lib/validations";
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
     }));
     const { data, error } = await supabaseAdmin.from("stock_items").insert(encryptedRows).select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    await bumpCacheVersion("admin-dashboard");
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Không thêm được kho tài khoản" }, { status: 400 });

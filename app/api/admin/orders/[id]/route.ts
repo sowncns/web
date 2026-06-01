@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { decryptText, encryptText } from "@/lib/encryption";
 import { isAdminRequest } from "@/lib/auth";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { orderPatchSchema } from "@/lib/validations";
 
@@ -31,6 +32,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const itemLabel = isTemplate ? "template" : "tài khoản";
   if (body.action === "update_status") {
     await supabaseAdmin.from("orders").update({ order_status: body.order_status, updated_at: new Date().toISOString() }).eq("id", params.id);
+    await bumpCacheVersion("admin-dashboard");
     return NextResponse.json({ ok: true });
   }
   if (order.payment_status !== "PAID") return NextResponse.json({ error: `Chỉ cấp ${itemLabel} cho đơn đã thanh toán` }, { status: 400 });
@@ -60,6 +62,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!isTemplate) {
       await supabaseAdmin.from("stock_items").update({ status: "USED", used_by_order_id: order.id, used_at: new Date().toISOString() }).in("id", stockItems.map((stock) => stock.id));
     }
+    await bumpCacheVersion("admin-dashboard");
     return NextResponse.json({ ok: true });
   }
   await supabaseAdmin.from("order_deliveries").delete().eq("order_id", order.id);
@@ -96,5 +99,6 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     order_status: "COMPLETED",
     updated_at: new Date().toISOString()
   }).eq("id", order.id);
+  await bumpCacheVersion("admin-dashboard");
   return NextResponse.json({ ok: true });
 }

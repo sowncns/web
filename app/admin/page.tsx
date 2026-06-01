@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { requireAdmin } from "@/lib/auth";
+import { cacheRemember, createCacheKey, getCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -14,12 +15,20 @@ export const revalidate = 0;
 export default async function AdminDashboardPage() {
   noStore();
   const { profile } = await requireAdmin();
-  const [{ data: ordersData }, { count: productCount }, { count: stockCount }] = await Promise.all([
-    supabaseAdmin.from("orders").select("*, products(name)").order("created_at", { ascending: false }).limit(8),
-    supabaseAdmin.from("products").select("*", { count: "exact", head: true }).eq("is_active", true),
-    supabaseAdmin.from("stock_items").select("*", { count: "exact", head: true }).eq("status", "AVAILABLE")
-  ]);
-  const orders = ordersData ?? [];
+  const dashboardVersion = await getCacheVersion("admin-dashboard");
+  const dashboard = await cacheRemember(
+    createCacheKey(["admin-dashboard-page", dashboardVersion]),
+    { ttl: 30 },
+    async () => {
+      const [{ data: ordersData }, { count: productCount }, { count: stockCount }] = await Promise.all([
+        supabaseAdmin.from("orders").select("id,order_code,total_amount,payment_status,order_status,paid_at,created_at,products(name)").order("created_at", { ascending: false }).limit(8),
+        supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabaseAdmin.from("stock_items").select("id", { count: "exact", head: true }).eq("status", "AVAILABLE")
+      ]);
+      return { orders: ordersData ?? [], productCount: productCount || 0, stockCount: stockCount || 0 };
+    }
+  );
+  const orders = dashboard.orders;
   const totalRevenue = orders.filter((o: any) => o.payment_status === "PAID").reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
   const today = new Date().toISOString().slice(0, 10);
   const todayRevenue = orders.filter((o: any) => o.payment_status === "PAID" && String(o.paid_at || "").startsWith(today)).reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
@@ -29,8 +38,8 @@ export default async function AdminDashboardPage() {
     ["Tổng số đơn", orders.length],
     ["Đơn chờ xử lý", orders.filter((o: any) => o.order_status === "PROCESSING").length],
     ["Đơn đã thanh toán", orders.filter((o: any) => o.payment_status === "PAID").length],
-    ["Sản phẩm đang bán", productCount || 0],
-    ["Tài khoản còn trong kho", stockCount || 0]
+    ["Sản phẩm đang bán", dashboard.productCount],
+    ["Tài khoản còn trong kho", dashboard.stockCount]
   ];
   return (
     <>

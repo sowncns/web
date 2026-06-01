@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bumpCacheVersion } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -7,5 +8,6 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { data, error } = await supabase.from("orders").insert({ ...body, user_id: user?.id || null, order_code: Date.now() }).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  await bumpCacheVersion("admin-dashboard");
   return NextResponse.json(data);
 }

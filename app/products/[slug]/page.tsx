@@ -4,29 +4,42 @@ import { notFound } from "next/navigation";
 import { Clock, ShieldCheck, HelpCircle, Package, ArrowRight, Zap, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/ProductGrid";
+import { cacheRemember, createCacheKey, getCacheVersion } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
   const supabase = createClient();
-  const { data: productData } = await supabase
-    .from("products")
-    .select("id,name,slug,description,image_url,price,duration,warranty_policy,delivery_guide,categories(category_type)")
-    .eq("slug", params.slug)
-    .eq("is_active", true)
-    .single();
-  const product = productData as any;
+  const productsVersion = await getCacheVersion("products");
+  const product = await cacheRemember(
+    createCacheKey(["product-detail", productsVersion, params.slug]),
+    { ttl: 120 },
+    async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id,name,slug,description,image_url,price,duration,warranty_policy,delivery_guide,categories(category_type)")
+        .eq("slug", params.slug)
+        .eq("is_active", true)
+        .single();
+      return data as any;
+    }
+  );
   if (!product) notFound();
   const isTemplate = product.categories?.category_type === "TEMPLATE";
-  let relatedQuery = supabase
-    .from("products")
-    .select("id,name,slug,image_url,price,duration,categories!inner(category_type)")
-    .eq("is_active", true)
-    .neq("id", product.id)
-    .limit(4);
-  relatedQuery = relatedQuery.eq("categories.category_type", isTemplate ? "TEMPLATE" : "ACCOUNT");
-  const { data: relatedData } = await relatedQuery;
-  const related = relatedData ?? [];
+  const related = await cacheRemember(
+    createCacheKey(["related-products", productsVersion, product.id, isTemplate ? "TEMPLATE" : "ACCOUNT"]),
+    { ttl: 120 },
+    async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id,name,slug,image_url,price,duration,categories!inner(category_type)")
+        .eq("is_active", true)
+        .neq("id", product.id)
+        .eq("categories.category_type", isTemplate ? "TEMPLATE" : "ACCOUNT")
+        .limit(4);
+      return data ?? [];
+    }
+  );
   const previewImages = String(product.description || "")
     .split(/\r?\n/)
     .map((line) => line.trim())

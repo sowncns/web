@@ -1,6 +1,7 @@
 import { ProductFilter } from "@/components/ProductFilter";
 import { ProductGrid } from "@/components/ProductGrid";
 import { Pagination } from "@/components/Pagination";
+import { cacheRemember, createCacheKey, getCacheVersion } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
@@ -11,22 +12,40 @@ export default async function ProductsPage({ searchParams }: { searchParams: Rec
   const to = from + pageSize - 1;
   const productKind = searchParams.type === "template" ? "TEMPLATE" : "ACCOUNT";
   const isTemplatePage = productKind === "TEMPLATE";
-  let categoriesQuery = supabase.from("categories").select("*").order("name");
-  categoriesQuery = categoriesQuery.eq("category_type", productKind);
-  let query = supabase
-    .from("products")
-    .select("id,name,slug,image_url,price,duration,is_active,categories!inner(slug,category_type)", { count: "exact" })
-    .eq("is_active", true)
-    .eq("categories.category_type", productKind)
-    .range(from, to);
-  if (searchParams.search) query = query.ilike("name", `%${searchParams.search}%`);
-  if (searchParams.category) query = query.eq("categories.slug", searchParams.category);
-  if (searchParams.sort === "price_asc") query = query.order("price", { ascending: true });
-  if (searchParams.sort === "price_desc") query = query.order("price", { ascending: false });
-  if (!searchParams.sort) query = query.order("created_at", { ascending: false });
-  const [{ data: categoriesData }, { data: productsData, count }] = await Promise.all([categoriesQuery, query]);
-  const categories = categoriesData ?? [];
-  const products = productsData ?? [];
+  const [productsVersion, categoriesVersion] = await Promise.all([getCacheVersion("products"), getCacheVersion("categories")]);
+  const categories = await cacheRemember(
+    createCacheKey(["categories", categoriesVersion, productKind]),
+    { ttl: 300 },
+    async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("id,name,slug,category_type")
+        .eq("category_type", productKind)
+        .order("name");
+      return data ?? [];
+    }
+  );
+  const productResult = await cacheRemember(
+    createCacheKey(["products-page", productsVersion, productKind, searchParams.search, searchParams.category, searchParams.sort, page, pageSize]),
+    { ttl: 60 },
+    async () => {
+      let query = supabase
+        .from("products")
+        .select("id,name,slug,image_url,price,duration,is_active,categories!inner(slug,category_type)", { count: "exact" })
+        .eq("is_active", true)
+        .eq("categories.category_type", productKind)
+        .range(from, to);
+      if (searchParams.search) query = query.ilike("name", `%${searchParams.search}%`);
+      if (searchParams.category) query = query.eq("categories.slug", searchParams.category);
+      if (searchParams.sort === "price_asc") query = query.order("price", { ascending: true });
+      if (searchParams.sort === "price_desc") query = query.order("price", { ascending: false });
+      if (!searchParams.sort) query = query.order("created_at", { ascending: false });
+      const { data, count } = await query;
+      return { products: data ?? [], count };
+    }
+  );
+  const products = productResult.products;
+  const count = productResult.count;
 
   return (
     <div className="container-page py-10">

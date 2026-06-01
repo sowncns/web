@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bumpCacheVersion } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { deliverTemplateOrder, isTemplateProduct } from "@/lib/delivery";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     });
 
     if (error) throw new Error(error.message);
+    await bumpCacheVersion("admin-dashboard");
     if (isTemplate && data?.orderId) {
       const delivery = await deliverTemplateOrder(data.orderId);
       if (!delivery.delivered && delivery.reason === "NO_TEMPLATE_STOCK") {

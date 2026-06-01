@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
 import { deliverTemplateOrder } from "@/lib/delivery";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString()
         }).eq("id", order.id);
         await deliverTemplateOrder(order.id);
+        await bumpCacheVersion("admin-dashboard");
       }
       return NextResponse.json({ success: true });
     }

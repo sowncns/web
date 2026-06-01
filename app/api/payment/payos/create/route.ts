@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
 import { isTemplateProduct } from "@/lib/delivery";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAppUrl } from "@/lib/url";
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       order_status: "PENDING"
     }).select("*").single();
     if (orderError) throw new Error(orderError.message);
+    await bumpCacheVersion("admin-dashboard");
     const appUrl = getAppUrl(request);
     const paymentLink = await payOS.paymentRequests.create({
       orderCode,

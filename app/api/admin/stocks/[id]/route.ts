@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { encryptText } from "@/lib/encryption";
 import { isAdminRequest } from "@/lib/auth";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -17,6 +18,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!Object.keys(update).length) return NextResponse.json({ error: "Không có dữ liệu cập nhật" }, { status: 400 });
   const { data, error } = await supabaseAdmin.from("stock_items").update(update).eq("id", params.id).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  await bumpCacheVersion("admin-dashboard");
   return NextResponse.json(data);
 }
 
@@ -25,5 +27,6 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   if (!admin.ok) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   const { error } = await supabaseAdmin.from("stock_items").delete().eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  await bumpCacheVersion("admin-dashboard");
   return NextResponse.json({ ok: true });
 }

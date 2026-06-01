@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductGrid } from "@/components/ProductGrid";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
+import { cacheRemember, createCacheKey, getCacheVersion } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
@@ -15,13 +16,20 @@ export default async function HomePage() {
   if (profile?.role === "ADMIN") {
     redirect("/admin");
   }
-  const { data: productsData } = await supabase
-    .from("products")
-    .select("id,name,slug,image_url,price,duration,categories(category_type)")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(8);
-  const products = productsData ?? [];
+  const productsVersion = await getCacheVersion("products");
+  const products = await cacheRemember(
+    createCacheKey(["home-featured-products", productsVersion]),
+    { ttl: 60 },
+    async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id,name,slug,image_url,price,duration,categories(category_type)")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      return data ?? [];
+    }
+  );
 
   return (
     <div className="relative">

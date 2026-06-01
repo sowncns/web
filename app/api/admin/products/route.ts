@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/auth";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { productSchema } from "@/lib/validations";
 
@@ -44,8 +45,10 @@ export async function POST(request: Request) {
   if (error && error.code === "23505") {
     const retry = await supabaseAdmin.from("products").insert({ ...body, slug: `${slug}-${Date.now()}` }).select("*").single();
     if (retry.error) return NextResponse.json({ error: retry.error.message }, { status: 400 });
+    await Promise.all([bumpCacheVersion("products"), bumpCacheVersion("admin-dashboard")]);
     return NextResponse.json(retry.data);
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  await Promise.all([bumpCacheVersion("products"), bumpCacheVersion("admin-dashboard")]);
   return NextResponse.json(data);
 }

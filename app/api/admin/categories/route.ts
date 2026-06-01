@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/auth";
+import { bumpCacheVersion } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { categorySchema } from "@/lib/validations";
 
@@ -23,5 +24,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Database Supabase chưa có cột category_type hoặc schema cache chưa reload. Hãy chạy migration SQL rồi reload schema cache." }, { status: 400 });
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  await Promise.all([bumpCacheVersion("categories"), bumpCacheVersion("products"), bumpCacheVersion("admin-dashboard")]);
   return NextResponse.json(data);
 }
