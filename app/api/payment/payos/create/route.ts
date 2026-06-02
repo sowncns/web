@@ -40,6 +40,8 @@ export async function POST(request: Request) {
       customer_email: profile?.username || profile?.email || user?.email || body.customerName,
       product_id: product.id,
       quantity,
+      subtotal_amount: totalAmount,
+      discount_amount: 0,
       total_amount: totalAmount,
       order_code: orderCode,
       note: body.note,

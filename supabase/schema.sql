@@ -73,6 +73,9 @@ create table if not exists public.orders (
   customer_email text,
   product_id uuid references public.products(id) on delete set null,
   quantity integer default 1,
+  subtotal_amount numeric not null default 0,
+  discount_amount numeric not null default 0,
+  voucher_code text,
   total_amount numeric not null,
   order_code bigint unique not null,
   payment_provider text default 'PAYOS',
@@ -95,6 +98,27 @@ create table if not exists public.order_deliveries (
   note_encrypted text,
   created_at timestamptz default now()
 );
+
+create table if not exists public.vouchers (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null,
+  description text,
+  discount_type text not null check (discount_type in ('PERCENT', 'FIXED')),
+  discount_value numeric not null check (discount_value > 0),
+  min_order_amount numeric default 0 not null check (min_order_amount >= 0),
+  max_uses integer check (max_uses is null or max_uses > 0),
+  used_count integer default 0 not null check (used_count >= 0),
+  starts_at timestamptz,
+  expires_at timestamptz,
+  is_active boolean default true not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.orders add column if not exists subtotal_amount numeric not null default 0;
+alter table public.orders add column if not exists discount_amount numeric not null default 0;
+alter table public.orders add column if not exists voucher_code text;
+update public.orders set subtotal_amount = total_amount where subtotal_amount = 0;
 
 alter table public.orders drop column if exists customer_phone;
 
@@ -256,6 +280,7 @@ end;
 $$;
 
 drop function if exists public.purchase_product_with_balance(uuid, uuid, integer, text, text, text, text);
+drop function if exists public.purchase_product_with_balance(uuid, uuid, integer, text, text, text);
 
 create or replace function public.purchase_product_with_balance(
   p_user_id uuid,
@@ -263,7 +288,8 @@ create or replace function public.purchase_product_with_balance(
   p_quantity integer,
   p_customer_name text,
   p_customer_email text,
-  p_note text default ''
+  p_note text default '',
+  p_voucher_code text default null
 )
 returns jsonb
 language plpgsql
@@ -273,7 +299,11 @@ as $$
 declare
   v_product public.products;
   v_profile public.profiles;
+  v_voucher public.vouchers;
+  v_subtotal numeric;
+  v_discount numeric := 0;
   v_total numeric;
+  v_voucher_code text;
   v_order public.orders;
   v_order_code bigint;
 begin
@@ -302,7 +332,45 @@ begin
     raise exception 'Sản phẩm không khả dụng';
   end if;
 
-  v_total := v_product.price * p_quantity;
+  v_subtotal := v_product.price * p_quantity;
+  v_total := v_subtotal;
+  v_voucher_code := nullif(upper(trim(coalesce(p_voucher_code, ''))), '');
+
+  if v_voucher_code is not null then
+    select * into v_voucher
+    from public.vouchers
+    where code = v_voucher_code
+    for update;
+
+    if not found or not v_voucher.is_active then
+      raise exception 'Voucher không tồn tại hoặc đã tắt';
+    end if;
+
+    if v_voucher.starts_at is not null and v_voucher.starts_at > now() then
+      raise exception 'Voucher chưa đến thời gian sử dụng';
+    end if;
+
+    if v_voucher.expires_at is not null and v_voucher.expires_at < now() then
+      raise exception 'Voucher đã hết hạn';
+    end if;
+
+    if v_voucher.max_uses is not null and v_voucher.used_count >= v_voucher.max_uses then
+      raise exception 'Voucher đã hết lượt sử dụng';
+    end if;
+
+    if v_subtotal < v_voucher.min_order_amount then
+      raise exception 'Đơn hàng chưa đạt giá trị tối thiểu để dùng voucher';
+    end if;
+
+    if v_voucher.discount_type = 'PERCENT' then
+      v_discount := floor(v_subtotal * v_voucher.discount_value / 100);
+    else
+      v_discount := v_voucher.discount_value;
+    end if;
+
+    v_discount := greatest(0, least(v_subtotal, v_discount));
+    v_total := greatest(0, v_subtotal - v_discount);
+  end if;
 
   if coalesce(v_profile.balance, 0) < v_total then
     raise exception 'Số dư không đủ';
@@ -321,6 +389,9 @@ begin
     customer_email,
     product_id,
     quantity,
+    subtotal_amount,
+    discount_amount,
+    voucher_code,
     total_amount,
     order_code,
     payment_provider,
@@ -335,6 +406,9 @@ begin
     p_customer_email,
     p_product_id,
     p_quantity,
+    v_subtotal,
+    v_discount,
+    v_voucher_code,
     v_total,
     v_order_code,
     'BALANCE',
@@ -345,9 +419,19 @@ begin
   )
   returning * into v_order;
 
+  if v_voucher_code is not null then
+    update public.vouchers
+    set used_count = used_count + 1,
+        updated_at = now()
+    where id = v_voucher.id;
+  end if;
+
   return jsonb_build_object(
     'orderId', v_order.id,
     'orderCode', v_order.order_code,
+    'subtotalAmount', v_order.subtotal_amount,
+    'discountAmount', v_order.discount_amount,
+    'voucherCode', v_order.voucher_code,
     'totalAmount', v_order.total_amount,
     'balance', coalesce(v_profile.balance, 0) - v_total
   );
@@ -364,6 +448,7 @@ alter table public.categories enable row level security;
 alter table public.products enable row level security;
 alter table public.stock_items enable row level security;
 alter table public.orders enable row level security;
+alter table public.vouchers enable row level security;
 alter table public.order_deliveries enable row level security;
 alter table public.wallet_topups enable row level security;
 alter table public.payment_logs enable row level security;
@@ -398,6 +483,9 @@ drop policy if exists "orders_user_insert" on public.orders;
 create policy "orders_user_insert" on public.orders for insert with check (auth.uid() = user_id or user_id is null);
 drop policy if exists "orders_admin_all" on public.orders;
 create policy "orders_admin_all" on public.orders for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "vouchers_admin_all" on public.vouchers;
+create policy "vouchers_admin_all" on public.vouchers for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "order_deliveries_user_select" on public.order_deliveries;
 create policy "order_deliveries_user_select" on public.order_deliveries for select using (
@@ -441,6 +529,8 @@ create policy "ticket_replies_admin_all" on public.ticket_replies for all using 
 create index if not exists products_slug_idx on public.products(slug);
 create index if not exists orders_user_id_idx on public.orders(user_id);
 create index if not exists orders_order_code_idx on public.orders(order_code);
+create index if not exists vouchers_code_idx on public.vouchers(code);
+create index if not exists vouchers_active_expires_idx on public.vouchers(is_active, expires_at);
 create index if not exists order_deliveries_order_id_idx on public.order_deliveries(order_id);
 create index if not exists wallet_topups_user_id_idx on public.wallet_topups(user_id);
 create index if not exists wallet_topups_order_code_idx on public.wallet_topups(order_code);

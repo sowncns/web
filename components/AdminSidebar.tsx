@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Boxes, FolderTree, LayoutDashboard, Package, Receipt, Users } from "lucide-react";
+import { Boxes, FolderTree, LayoutDashboard, Package, Receipt, TicketPercent, Users } from "lucide-react";
 
 const items = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Sản phẩm", icon: Package },
   { href: "/admin/categories", label: "Danh mục", icon: FolderTree },
   { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
+  { href: "/admin/vouchers", label: "Voucher", icon: TicketPercent },
   { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes },
   { href: "/admin/users", label: "Người dùng", icon: Users }
 ];

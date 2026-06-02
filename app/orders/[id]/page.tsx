@@ -15,7 +15,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const supabase = createClient();
   const { data: orderData } = await supabase
     .from("orders")
-    .select("id,order_code,total_amount,payment_status,order_status,quantity,delivery_username_encrypted,delivery_password_encrypted,delivery_note_encrypted,created_at,products(name,slug,categories(category_type))")
+    .select("id,order_code,subtotal_amount,discount_amount,voucher_code,total_amount,payment_status,order_status,quantity,delivery_username_encrypted,delivery_password_encrypted,delivery_note_encrypted,created_at,products(name,slug,categories(category_type))")
     .eq("id", params.id)
     .eq("user_id", user.id)
     .single();
@@ -51,6 +51,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <p className="text-xs text-muted-foreground">Sản phẩm</p>
                 <p className="mt-1 font-semibold text-slate-950">{order.products?.name}</p>
               </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Tạm tính</p>
+                <p className="mt-1 font-semibold text-slate-950">{formatCurrency(order.subtotal_amount || order.total_amount)}</p>
+              </div>
+              {Number(order.discount_amount || 0) > 0 ? (
+                <div>
+                  <p className="text-xs text-muted-foreground">Voucher</p>
+                  <p className="mt-1 font-semibold text-emerald-700">{order.voucher_code} - giảm {formatCurrency(order.discount_amount)}</p>
+                </div>
+              ) : null}
               <div>
                 <p className="text-xs text-muted-foreground">Tổng tiền</p>
                 <p className="mt-1 font-semibold text-slate-950">{formatCurrency(order.total_amount)}</p>

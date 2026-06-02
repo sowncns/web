@@ -7,7 +7,8 @@ import { z } from "zod";
 
 const purchaseSchema = z.object({
   productId: z.string().uuid("Sản phẩm không hợp lệ"),
-  quantity: z.coerce.number().int().min(1).max(20)
+  quantity: z.coerce.number().int().min(1).max(20),
+  voucherCode: z.string().trim().max(50).optional()
 });
 
 export async function POST(request: Request) {
@@ -39,7 +40,8 @@ export async function POST(request: Request) {
       p_quantity: quantity,
       p_customer_name: profile?.full_name || profile?.username || "Khách hàng",
       p_customer_email: profile?.username || profile?.email || user.email || "",
-      p_note: ""
+      p_note: "",
+      p_voucher_code: body.voucherCode || null
     });
 
     if (error) throw new Error(error.message);

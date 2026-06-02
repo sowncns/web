@@ -146,6 +146,127 @@ export function CategoryForm({ category }: { category?: any }) {
   );
 }
 
+function toDatetimeLocal(value: string | null | undefined) {
+  if (!value) return "";
+  return new Date(value).toISOString().slice(0, 16);
+}
+
+export function VoucherForm({ voucher }: { voucher?: any }) {
+  const router = useRouter();
+  async function submit(formData: FormData) {
+    try {
+      await send(voucher ? `/api/admin/vouchers/${voucher.id}` : "/api/admin/vouchers", voucher ? "PATCH" : "POST", {
+        code: formData.get("code"),
+        description: formData.get("description"),
+        discount_type: formData.get("discount_type"),
+        discount_value: formData.get("discount_value"),
+        min_order_amount: formData.get("min_order_amount") || 0,
+        max_uses: formData.get("max_uses") ? Number(formData.get("max_uses")) : null,
+        starts_at: formData.get("starts_at") ? new Date(String(formData.get("starts_at"))).toISOString() : null,
+        expires_at: formData.get("expires_at") ? new Date(String(formData.get("expires_at"))).toISOString() : null,
+        is_active: formData.get("is_active") === "on"
+      });
+      toast.success("Đã lưu voucher");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không lưu được voucher");
+    }
+  }
+  return (
+    <form action={submit} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="space-y-1">
+        <Label>Mã voucher</Label>
+        <Input name="code" defaultValue={voucher?.code} placeholder="SALE10" required />
+      </div>
+      <div className="space-y-1">
+        <Label>Loại giảm</Label>
+        <select name="discount_type" defaultValue={voucher?.discount_type || "PERCENT"} className="h-10 w-full rounded-md border-input text-sm">
+          <option value="PERCENT">Theo phần trăm</option>
+          <option value="FIXED">Theo số tiền</option>
+        </select>
+      </div>
+      <div className="space-y-1">
+        <Label>Giá trị giảm</Label>
+        <Input name="discount_value" type="number" min={1} defaultValue={voucher?.discount_value} placeholder="10 hoặc 50000" required />
+      </div>
+      <div className="space-y-1">
+        <Label>Đơn tối thiểu</Label>
+        <Input name="min_order_amount" type="number" min={0} defaultValue={voucher?.min_order_amount || 0} />
+      </div>
+      <div className="space-y-1">
+        <Label>Giới hạn lượt</Label>
+        <Input name="max_uses" type="number" min={1} defaultValue={voucher?.max_uses || ""} placeholder="Để trống nếu không giới hạn" />
+      </div>
+      <div className="space-y-1">
+        <Label>Bắt đầu</Label>
+        <Input name="starts_at" type="datetime-local" defaultValue={toDatetimeLocal(voucher?.starts_at)} />
+      </div>
+      <div className="space-y-1">
+        <Label>Hết hạn</Label>
+        <Input name="expires_at" type="datetime-local" defaultValue={toDatetimeLocal(voucher?.expires_at)} />
+      </div>
+      <div className="space-y-1">
+        <Label>Mô tả</Label>
+        <Input name="description" defaultValue={voucher?.description || ""} placeholder="Ghi chú nội bộ" />
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input name="is_active" type="checkbox" defaultChecked={voucher?.is_active ?? true} /> Đang bật
+      </label>
+      <div className="md:col-span-2 xl:col-span-3">
+        <Button>{voucher ? "Cập nhật voucher" : "Thêm voucher"}</Button>
+      </div>
+    </form>
+  );
+}
+
+export function VoucherRowActions({ voucher }: { voucher: any }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  async function toggleActive() {
+    try {
+      await send(`/api/admin/vouchers/${voucher.id}`, "PATCH", { is_active: !voucher.is_active });
+      toast.success(voucher.is_active ? "Đã tắt voucher" : "Đã bật voucher");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không cập nhật được voucher");
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Xóa voucher này?")) return;
+    try {
+      await fetch(`/api/admin/vouchers/${voucher.id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok) throw new Error((await res.json()).error || "Không xóa được voucher");
+      });
+      toast.success("Đã xóa voucher");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không xóa được voucher");
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setOpen((value) => !value)}>
+          <Pencil className="h-4 w-4" />
+          {open ? "Đóng" : "Sửa"}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={toggleActive}>
+          {voucher.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {voucher.is_active ? "Tắt" : "Bật"}
+        </Button>
+        <Button type="button" variant="destructive" size="sm" onClick={remove}>
+          <Trash2 className="h-4 w-4" />
+          Xóa
+        </Button>
+      </div>
+      {open ? <VoucherForm voucher={voucher} /> : null}
+    </div>
+  );
+}
+
 export function StockForm({ products }: { products: any[] }) {
   const router = useRouter();
   async function submit(formData: FormData) {

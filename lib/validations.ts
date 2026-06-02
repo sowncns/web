@@ -55,6 +55,27 @@ export const categorySchema = z.object({
   category_type: z.enum(["ACCOUNT", "TEMPLATE"]).default("ACCOUNT")
 });
 
+export const voucherSchema = z.object({
+  code: z.string().trim().min(2).max(50).transform((value) => value.toUpperCase()),
+  description: z.string().nullable().optional(),
+  discount_type: z.enum(["PERCENT", "FIXED"]),
+  discount_value: z.coerce.number().positive(),
+  min_order_amount: z.coerce.number().min(0).default(0),
+  max_uses: z.coerce.number().int().positive().nullable().optional(),
+  starts_at: z.string().nullable().optional().or(z.literal("")),
+  expires_at: z.string().nullable().optional().or(z.literal("")),
+  is_active: z.boolean().default(true)
+}).refine((data) => data.discount_type !== "PERCENT" || data.discount_value <= 100, {
+  message: "Voucher giảm theo phần trăm không được vượt quá 100%",
+  path: ["discount_value"]
+});
+
+export const voucherValidateSchema = z.object({
+  productId: z.string().uuid("Sản phẩm không hợp lệ"),
+  quantity: z.coerce.number().int().min(1).max(20),
+  voucherCode: z.string().trim().min(2, "Vui lòng nhập mã voucher").max(50)
+});
+
 export const stockSchema = z.object({
   product_id: z.string().uuid(),
   username: z.string().min(1),

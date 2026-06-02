@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Package, Wallet, ShieldCheck, CreditCard, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Package, Wallet, ShieldCheck, CreditCard, ArrowRight, TicketPercent, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -13,12 +13,47 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucher, setVoucher] = useState<any>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
   const isTemplate = product.categories?.category_type === "TEMPLATE";
   const effectiveQuantity = isTemplate ? 1 : quantity;
-  const total = Number(product.price) * effectiveQuantity;
-  const payload = { productId: product.id, quantity: effectiveQuantity };
+  const subtotal = Number(product.price) * effectiveQuantity;
+  const discountAmount = Number(voucher?.discountAmount || 0);
+  const total = Math.max(0, subtotal - discountAmount);
+  const payload = { productId: product.id, quantity: effectiveQuantity, voucherCode: voucher?.code || undefined };
   const balance = Number(profile?.balance || 0);
   const hasEnoughBalance = balance >= total;
+
+  useEffect(() => {
+    setVoucher(null);
+  }, [effectiveQuantity, product.id]);
+
+  async function applyVoucher() {
+    const code = voucherCode.trim();
+    if (!code) {
+      toast.error("Vui lòng nhập mã voucher");
+      return;
+    }
+    setVoucherLoading(true);
+    try {
+      const res = await fetch("/api/vouchers/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id, quantity: effectiveQuantity, voucherCode: code })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Voucher không hợp lệ");
+      setVoucher(data);
+      setVoucherCode(data.code);
+      toast.success("Đã áp dụng voucher");
+    } catch (error) {
+      setVoucher(null);
+      toast.error(error instanceof Error ? error.message : "Không thể áp dụng voucher");
+    } finally {
+      setVoucherLoading(false);
+    }
+  }
 
   async function purchase() {
     setLoading(true);
@@ -106,8 +141,51 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
                 <span className="text-slate-600">Số lượng</span>
                 <span className="font-semibold text-slate-900">x{effectiveQuantity}</span>
               </div>
+              <div className="space-y-3 rounded-xl border border-slate-100 bg-white p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <TicketPercent className="h-4 w-4 text-primary" /> Voucher
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    className="h-10 uppercase"
+                    value={voucherCode}
+                    onChange={(event) => {
+                      setVoucherCode(event.target.value.toUpperCase());
+                      setVoucher(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        applyVoucher();
+                      }
+                    }}
+                    placeholder="Nhập mã"
+                  />
+                  <Button type="button" variant="outline" className="h-10 shrink-0" onClick={applyVoucher} disabled={voucherLoading}>
+                    {voucherLoading ? "..." : "Áp dụng"}
+                  </Button>
+                </div>
+                {voucher ? (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                    <span>{voucher.code} giảm {formatCurrency(discountAmount)}</span>
+                    <button type="button" className="rounded-full p-1 hover:bg-emerald-100" onClick={() => setVoucher(null)} aria-label="Bỏ voucher">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Tạm tính</span>
+                <span className="font-semibold text-slate-900">{formatCurrency(subtotal)}</span>
+              </div>
+              {discountAmount > 0 ? (
+                <div className="flex justify-between text-sm text-emerald-700">
+                  <span>Giảm giá</span>
+                  <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between pt-4">
-                <span className="font-bold text-slate-900">Tổng cộng</span>
+                <span className="font-bold text-slate-900">Thanh toán</span>
                 <span className="text-2xl font-black text-primary">{formatCurrency(total)}</span>
               </div>
             </div>
