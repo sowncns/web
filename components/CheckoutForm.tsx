@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Wallet, ShieldCheck, CreditCard, ArrowRight, TicketPercent, X } from "lucide-react";
+import { Package, Wallet, ShieldCheck, CreditCard, ArrowRight, TicketPercent, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -161,8 +161,8 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
                     }}
                     placeholder="Nhập mã"
                   />
-                  <Button type="button" variant="outline" className="h-10 shrink-0" onClick={applyVoucher} disabled={voucherLoading}>
-                    {voucherLoading ? "..." : "Áp dụng"}
+                  <Button type="button" variant="outline" className="h-10 shrink-0 min-w-[90px]" onClick={applyVoucher} disabled={voucherLoading}>
+                    {voucherLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Áp dụng"}
                   </Button>
                 </div>
                 {voucher ? (
@@ -200,7 +200,7 @@ export function CheckoutForm({ product, profile }: { product: any; profile?: any
 
               {hasEnoughBalance ? (
                 <Button className="h-14 w-full rounded-full text-base font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5" onClick={purchase} disabled={loading}>
-                  <CreditCard className="mr-2 h-5 w-5" />
+                  {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                   {loading ? "Đang xử lý..." : "Thanh toán ngay"}
                 </Button>
               ) : (

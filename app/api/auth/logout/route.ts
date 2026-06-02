@@ -5,5 +5,5 @@ import { getAppUrl } from "@/lib/url";
 export async function POST(request: Request) {
   const supabase = createClient();
   await supabase.auth.signOut();
-  return NextResponse.redirect(new URL("/", getAppUrl(request)), 303);
+  return NextResponse.redirect(new URL("/login", getAppUrl(request)), 303);
 }

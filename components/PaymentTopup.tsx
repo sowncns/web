@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, CreditCard, History, Landmark, QrCode, Wallet } from "lucide-react";
+import { Copy, CreditCard, History, Landmark, QrCode, Wallet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -155,7 +155,7 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
           </div>
 
           <Button className="h-11 w-full" onClick={createTopup} disabled={loading}>
-            <CreditCard className="h-4 w-4" />
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
             {loading ? "Đang tạo thanh toán..." : `Nạp ${formatCurrency(amount)}`}
           </Button>
 

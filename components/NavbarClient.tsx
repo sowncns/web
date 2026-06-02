@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LayoutTemplate, LogOut, MessageCircle, Package, Receipt, ShoppingBag, Users, User } from "lucide-react";
+import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LayoutTemplate, LogOut, MessageCircle, Package, Receipt, ShoppingBag, TicketPercent, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ const adminLinks = [
   { href: "/admin/products", label: "Sản phẩm", icon: Package },
   { href: "/admin/categories", label: "Danh mục", icon: FolderTree },
   { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
+  { href: "/admin/vouchers", label: "Voucher", icon: TicketPercent },
   { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes },
   { href: "/admin/users", label: "Người dùng", icon: Users }
 ];
@@ -29,7 +30,7 @@ export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profil
   const isAdmin = profile?.role === "ADMIN";
   const isAdminArea = pathname.startsWith("/admin");
   const sidebarLinks = isAdminArea ? adminLinks : userLinks;
-  const bottomLinks = sidebarLinks.slice(0, 5);
+  const bottomLinks = sidebarLinks.slice(0, isAdminArea ? 6 : 5);
 
   return (
     <>

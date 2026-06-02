@@ -52,7 +52,15 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
+      {busy ? (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-white/70 backdrop-blur-[2px]">
+          <div className="flex items-center gap-3 rounded-full border bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-lg">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            {googleLoading ? "Đang chuyển hướng..." : "Đang đăng nhập..."}
+          </div>
+        </div>
+      ) : null}
       <CardHeader>
         <CardTitle>Đăng nhập</CardTitle>
         <CardDescription>Truy cập tài khoản để xem đơn hàng và hỗ trợ.</CardDescription>
@@ -131,7 +139,15 @@ export function RegisterForm() {
   }
 
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
+      {busy ? (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-white/70 backdrop-blur-[2px]">
+          <div className="flex items-center gap-3 rounded-full border bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-lg">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            {googleLoading ? "Đang chuyển hướng..." : "Đang tạo tài khoản..."}
+          </div>
+        </div>
+      ) : null}
       <CardHeader>
         <CardTitle>Đăng ký</CardTitle>
       
