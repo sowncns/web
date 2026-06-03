@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, CreditCard, History, Landmark, QrCode, Wallet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +29,17 @@ type Topup = {
   created_at: string;
   paid_at: string | null;
 };
+
+type StoredTopupPayment = {
+  amount: number;
+  checkoutUrl: string;
+  payment: PayOSPayment | null;
+  tab: "qr" | "bank";
+  savedAt: number;
+};
+
+const TOPUP_PAYMENT_STORAGE_KEY = "shopmmogiare:topup-payment";
+const TOPUP_PAYMENT_TTL = 15 * 60 * 1000;
 
 function getQrImageSrc(payment: PayOSPayment | null, checkoutUrl: string) {
   if (payment?.qrCode?.startsWith("http") || payment?.qrCode?.startsWith("data:image")) return payment.qrCode;
@@ -59,6 +70,42 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
   const [payment, setPayment] = useState<PayOSPayment | null>(null);
   const qrImageSrc = getQrImageSrc(payment, checkoutUrl);
 
+  useEffect(() => {
+    const stored = window.sessionStorage.getItem(TOPUP_PAYMENT_STORAGE_KEY);
+    if (!stored) return;
+    try {
+      const data = JSON.parse(stored) as StoredTopupPayment;
+      if (!data.checkoutUrl || Date.now() - data.savedAt > TOPUP_PAYMENT_TTL) {
+        window.sessionStorage.removeItem(TOPUP_PAYMENT_STORAGE_KEY);
+        return;
+      }
+      setAmount(data.amount);
+      setPayment(data.payment);
+      setCheckoutUrl(data.checkoutUrl);
+      setTab(data.tab || "qr");
+      setOpened(true);
+    } catch {
+      window.sessionStorage.removeItem(TOPUP_PAYMENT_STORAGE_KEY);
+    }
+  }, []);
+
+  function rememberPayment(nextPayment: PayOSPayment | null, nextCheckoutUrl: string, nextTab: "qr" | "bank" = "qr") {
+    window.sessionStorage.setItem(TOPUP_PAYMENT_STORAGE_KEY, JSON.stringify({
+      amount,
+      checkoutUrl: nextCheckoutUrl,
+      payment: nextPayment,
+      tab: nextTab,
+      savedAt: Date.now()
+    } satisfies StoredTopupPayment));
+  }
+
+  function closePaymentPanel() {
+    setOpened(false);
+    setPayment(null);
+    setCheckoutUrl("");
+    window.sessionStorage.removeItem(TOPUP_PAYMENT_STORAGE_KEY);
+  }
+
   async function copy(value: string | number) {
     await navigator.clipboard.writeText(String(value));
     toast.success("Đã sao chép");
@@ -78,6 +125,7 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
       setCheckoutUrl(data.checkoutUrl);
       setOpened(true);
       setTab("qr");
+      rememberPayment(data.payment || null, data.checkoutUrl, "qr");
       toast.success("Đã tạo thanh toán payOS");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không tạo được thanh toán");
@@ -160,7 +208,9 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
           {opened ? (
             <div className="space-y-4 pt-2">
               <div className="rounded-md border border-slate-200 bg-white py-3 text-center text-sm font-medium text-slate-600 shadow-sm">
-                Đóng cửa sổ thanh toán
+                <button type="button" onClick={closePaymentPanel} className="font-medium text-slate-700 hover:text-primary">
+                  Đóng cửa sổ thanh toán
+                </button>
               </div>
               <div className="text-center text-sm text-slate-600">
                 <p>Vui lòng hoàn thành thanh toán trong cửa sổ bên dưới.</p>
@@ -176,7 +226,10 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
           <div className="mx-auto flex w-fit border-b border-slate-200">
             <button
               type="button"
-              onClick={() => setTab("qr")}
+              onClick={() => {
+                setTab("qr");
+                if (checkoutUrl) rememberPayment(payment, checkoutUrl, "qr");
+              }}
               className={`flex h-11 items-center gap-2 border border-b-0 px-5 text-sm font-semibold ${tab === "qr" ? "bg-white text-slate-950" : "bg-slate-50 text-slate-400"}`}
             >
               <QrCode className="h-4 w-4" />
@@ -184,7 +237,10 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
             </button>
             <button
               type="button"
-              onClick={() => setTab("bank")}
+              onClick={() => {
+                setTab("bank");
+                if (checkoutUrl) rememberPayment(payment, checkoutUrl, "bank");
+              }}
               className={`flex h-11 items-center gap-2 border border-b-0 border-l-0 px-5 text-sm font-semibold ${tab === "bank" ? "bg-white text-slate-950" : "bg-slate-50 text-slate-400"}`}
             >
               <Landmark className="h-4 w-4" />
