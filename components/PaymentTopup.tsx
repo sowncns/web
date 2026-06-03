@@ -78,7 +78,6 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
       setCheckoutUrl(data.checkoutUrl);
       setOpened(true);
       setTab("qr");
-      router.refresh();
       toast.success("Đã tạo thanh toán payOS");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không tạo được thanh toán");
