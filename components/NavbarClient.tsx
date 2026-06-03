@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LayoutTemplate, LogOut, MessageCircle, Package, Receipt, ShoppingBag, TicketPercent, Users, User } from "lucide-react";
+import { Boxes, CreditCard, FolderTree, History, Home, LayoutDashboard, LayoutTemplate, LogOut, MessageCircle, Package, Receipt, Settings, ShoppingBag, TicketPercent, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
@@ -22,7 +22,8 @@ const adminLinks = [
   { href: "/admin/orders", label: "Đơn hàng", icon: Receipt },
   { href: "/admin/vouchers", label: "Voucher", icon: TicketPercent },
   { href: "/admin/stocks", label: "Kho tài khoản", icon: Boxes },
-  { href: "/admin/users", label: "Người dùng", icon: Users }
+  { href: "/admin/users", label: "Người dùng", icon: Users },
+  { href: "/admin/settings", label: "Cài đặt", icon: Settings }
 ];
 
 export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profile?: any }) {
@@ -30,7 +31,9 @@ export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profil
   const isAdmin = profile?.role === "ADMIN";
   const isAdminArea = pathname.startsWith("/admin");
   const sidebarLinks = isAdminArea ? adminLinks : userLinks;
-  const bottomLinks = sidebarLinks.slice(0, isAdminArea ? 6 : 5);
+  const bottomLinks = isAdminArea
+    ? [adminLinks[0], adminLinks[3], adminLinks[1], adminLinks[5], adminLinks[7]]
+    : sidebarLinks.slice(0, 5);
 
   return (
     <>
@@ -66,6 +69,11 @@ export function NavbarClient({ signedIn, profile }: { signedIn?: boolean; profil
             ) : null}
             {signedIn ? (
               <>
+                {isAdminArea ? (
+                  <Button asChild variant="outline" size="sm" className="px-2 sm:px-3">
+                    <Link href="/admin/settings"><Settings className="h-4 w-4" /> <span className="hidden sm:inline">Cài đặt</span></Link>
+                  </Button>
+                ) : null}
                 {!isAdminArea ? (
                   <Link href="/payment" className="hidden h-9 flex-col items-center justify-center rounded-md border border-sky-400 bg-sky-50 px-3 text-center text-xs font-semibold leading-tight text-primary shadow-sm sm:flex">
                     <span>Số dư</span>

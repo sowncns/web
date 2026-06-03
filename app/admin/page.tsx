@@ -48,6 +48,16 @@ export default async function AdminDashboardPage() {
         {cards.map(([label, value]) => <Card key={String(label)}><CardHeader><CardTitle className="text-sm text-muted-foreground">{label}</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{value}</CardContent></Card>)}
       </div>
       <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Cài đặt hệ thống</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href="/admin/settings">Mở cài đặt thông báo</Link>
+          </Button>
+        </CardContent>
+      </Card>
+      <Card className="mt-6">
         <CardHeader><CardTitle>Đơn hàng mới nhất</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm"><tbody>{orders.map((o: any) => <tr key={o.id} className="border-t"><td className="py-3">{o.order_code}</td><td>{o.products?.name}</td><td>{formatCurrency(o.total_amount)}</td><td><OrderStatusBadge status={o.payment_status} /></td><td>{formatDate(o.created_at)}</td><td><Button asChild size="sm" variant="outline"><Link href={`/admin/orders/${o.id}`}>Xem</Link></Button></td></tr>)}</tbody></table>

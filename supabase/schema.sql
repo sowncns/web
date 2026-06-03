@@ -222,6 +222,24 @@ create table if not exists public.ticket_replies (
   created_at timestamptz default now()
 );
 
+create table if not exists public.site_settings (
+  id integer primary key default 1 check (id = 1),
+  order_email_enabled boolean default false not null,
+  smtp_host text default 'smtp.gmail.com' not null,
+  smtp_port integer default 587 not null,
+  smtp_secure boolean default false not null,
+  smtp_user text,
+  smtp_password_encrypted text,
+  mail_from text,
+  admin_email text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+insert into public.site_settings (id)
+values (1)
+on conflict (id) do nothing;
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -484,6 +502,7 @@ alter table public.wallet_topups enable row level security;
 alter table public.payment_logs enable row level security;
 alter table public.support_tickets enable row level security;
 alter table public.ticket_replies enable row level security;
+alter table public.site_settings enable row level security;
 
 drop policy if exists "profiles_self_select" on public.profiles;
 create policy "profiles_self_select" on public.profiles for select using (auth.uid() = id);
@@ -555,6 +574,9 @@ drop policy if exists "ticket_replies_user_insert" on public.ticket_replies;
 create policy "ticket_replies_user_insert" on public.ticket_replies for insert with check (exists (select 1 from public.support_tickets t where t.id = ticket_id and t.user_id = auth.uid()));
 drop policy if exists "ticket_replies_admin_all" on public.ticket_replies;
 create policy "ticket_replies_admin_all" on public.ticket_replies for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "site_settings_admin_all" on public.site_settings;
+create policy "site_settings_admin_all" on public.site_settings for all using (public.is_admin()) with check (public.is_admin());
 
 create index if not exists products_slug_idx on public.products(slug);
 create index if not exists orders_user_id_idx on public.orders(user_id);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { payOS } from "@/lib/payos";
+import { notifyAdminNewOrder } from "@/lib/admin-notifications";
 import { isTemplateProduct } from "@/lib/delivery";
 import { bumpCacheVersion } from "@/lib/cache";
 import { getNextOrderCode } from "@/lib/order-code";
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       buyerEmail: profile?.email || user?.email || undefined,
       items: [{ name: product.name, quantity, price: Number(product.price) }]
     });
+    await notifyAdminNewOrder(order.id);
     return NextResponse.json({
       orderId: order.id,
       orderCode,

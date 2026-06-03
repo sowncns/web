@@ -4,7 +4,7 @@ import { type ReactNode, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, MailCheck, Pencil, Send, Trash2 } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -591,6 +591,95 @@ export function CategoryRowActions({ category }: { category: any }) {
         {removing ? <LoadingIcon /> : <Trash2 className="h-4 w-4" />}
         {removing ? "Đang xóa" : "Xóa danh mục"}
       </Button>
+    </div>
+  );
+}
+
+export function NotificationSettingsForm({ settings }: { settings: any }) {
+  const router = useRouter();
+  const [testing, setTesting] = useState(false);
+
+  async function submit(formData: FormData) {
+    try {
+      await send("/api/admin/settings/notifications", "PATCH", {
+        order_email_enabled: formData.get("order_email_enabled") === "on",
+        smtp_host: formData.get("smtp_host"),
+        smtp_port: Number(formData.get("smtp_port") || 587),
+        smtp_secure: formData.get("smtp_secure") === "on",
+        smtp_user: formData.get("smtp_user"),
+        smtp_password: formData.get("smtp_password") || undefined,
+        mail_from: formData.get("mail_from"),
+        admin_email: formData.get("admin_email")
+      });
+      toast.success("Đã lưu cấu hình thông báo");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không lưu được cấu hình");
+    }
+  }
+
+  async function sendTest() {
+    setTesting(true);
+    try {
+      await fetch("/api/admin/settings/notifications/test", { method: "POST" }).then(async (res) => {
+        if (!res.ok) throw new Error((await res.json()).error || "Không gửi được email thử");
+      });
+      toast.success("Đã gửi email thử");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không gửi được email thử");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <form action={submit} className="grid gap-4 rounded-lg border bg-white p-4 md:grid-cols-2">
+        <label className="flex items-center gap-2 text-sm font-medium md:col-span-2">
+          <input name="order_email_enabled" type="checkbox" defaultChecked={settings?.order_email_enabled} />
+          Bật gửi email cho admin khi có đơn hàng mới
+        </label>
+        <div className="space-y-1">
+          <Label>SMTP host</Label>
+          <Input name="smtp_host" defaultValue={settings?.smtp_host || "smtp.gmail.com"} required />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="space-y-1">
+            <Label>SMTP port</Label>
+            <Input name="smtp_port" type="number" min={1} max={65535} defaultValue={settings?.smtp_port || 587} required />
+          </div>
+          <label className="flex items-center gap-2 pt-6 text-sm">
+            <input name="smtp_secure" type="checkbox" defaultChecked={settings?.smtp_secure} />
+            SSL
+          </label>
+        </div>
+        <div className="space-y-1">
+          <Label>Tài khoản Gmail SMTP</Label>
+          <Input name="smtp_user" type="email" defaultValue={settings?.smtp_user || ""} placeholder="your@gmail.com" required />
+        </div>
+        <div className="space-y-1">
+          <Label>Mật khẩu ứng dụng Gmail</Label>
+          <Input name="smtp_password" type="password" placeholder={settings?.has_smtp_password ? "Đã lưu, để trống nếu không đổi" : "Nhập app password Gmail"} />
+        </div>
+        <div className="space-y-1">
+          <Label>Email gửi đi</Label>
+          <Input name="mail_from" type="email" defaultValue={settings?.mail_from || settings?.smtp_user || ""} placeholder="your@gmail.com" required />
+        </div>
+        <div className="space-y-1">
+          <Label>Email admin nhận thông báo</Label>
+          <Input name="admin_email" type="email" defaultValue={settings?.admin_email || ""} placeholder="admin@example.com" required />
+        </div>
+        <div className="flex flex-wrap gap-2 md:col-span-2">
+          <SubmitButton loadingLabel="Đang lưu"><MailCheck className="h-4 w-4" /> Lưu cấu hình</SubmitButton>
+          <Button type="button" variant="outline" onClick={sendTest} disabled={testing}>
+            {testing ? <LoadingIcon /> : <Send className="h-4 w-4" />}
+            {testing ? "Đang gửi thử" : "Gửi email thử"}
+          </Button>
+        </div>
+      </form>
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+        Gmail thường dùng host smtp.gmail.com, port 587 không bật SSL hoặc port 465 có bật SSL. Mật khẩu cần là App Password của Gmail.
+      </div>
     </div>
   );
 }

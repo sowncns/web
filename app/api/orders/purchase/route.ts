@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bumpCacheVersion } from "@/lib/cache";
+import { notifyAdminNewOrder } from "@/lib/admin-notifications";
 import { createClient } from "@/lib/supabase/server";
 import { deliverTemplateOrder, isTemplateProduct } from "@/lib/delivery";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Template này chưa có link tải trong kho. Vui lòng liên hệ admin." }, { status: 409 });
       }
     }
+    if (data?.orderId) await notifyAdminNewOrder(data.orderId);
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Không thể mua hàng bằng số dư" }, { status: 400 });
