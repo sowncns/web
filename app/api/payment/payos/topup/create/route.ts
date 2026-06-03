@@ -15,18 +15,17 @@ export async function POST(request: Request) {
     const { data: profile } = await supabase.from("profiles").select("status,email,username,full_name").eq("id", user.id).single();
     if (profile?.status === "BANNED") return NextResponse.json({ error: "Tài khoản đã bị khóa" }, { status: 403 });
 
-    const orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 90 + 10)}`.slice(0, 15));
     const appUrl = getAppUrl(request);
-    const description = `Nap tien ${orderCode}`.slice(0, 25);
 
     const { data: topup, error: topupError } = await supabaseAdmin.from("wallet_topups").insert({
       user_id: user.id,
       amount: body.amount,
-      order_code: orderCode,
       payment_status: "PENDING"
     }).select("*").single();
 
     if (topupError) throw new Error(`Không tạo được giao dịch nạp tiền: ${topupError.message}`);
+    const orderCode = Number(topup.order_code);
+    const description = `Nap tien ${orderCode}`.slice(0, 25);
 
     const paymentLink = await payOS.paymentRequests.create({
       orderCode,

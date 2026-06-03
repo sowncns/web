@@ -66,6 +66,14 @@ create table if not exists public.stock_items (
   used_at timestamptz
 );
 
+create sequence if not exists public.order_code_seq
+  as bigint
+  start with 900000000000000
+  increment by 1
+  minvalue 900000000000000
+  maxvalue 999999999999999
+  cache 1;
+
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
@@ -77,7 +85,7 @@ create table if not exists public.orders (
   discount_amount numeric not null default 0,
   voucher_code text,
   total_amount numeric not null,
-  order_code bigint unique not null,
+  order_code bigint unique not null default nextval('public.order_code_seq'),
   payment_provider text default 'PAYOS',
   payment_status text default 'PENDING' check (payment_status in ('PENDING', 'PAID', 'CANCELLED', 'EXPIRED', 'REFUNDED')),
   order_status text default 'PENDING' check (order_status in ('PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED')),
@@ -144,7 +152,7 @@ create table if not exists public.wallet_topups (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
   amount numeric not null,
-  order_code bigint unique not null,
+  order_code bigint unique not null default nextval('public.order_code_seq'),
   payment_provider text default 'PAYOS',
   payment_status text default 'PENDING' check (payment_status in ('PENDING', 'PAID', 'CANCELLED', 'EXPIRED', 'REFUNDED')),
   checkout_url text,
@@ -155,6 +163,22 @@ create table if not exists public.wallet_topups (
   created_at timestamptz default now(),
   paid_at timestamptz,
   updated_at timestamptz default now()
+);
+
+alter table public.orders alter column order_code set default nextval('public.order_code_seq');
+alter table public.wallet_topups alter column order_code set default nextval('public.order_code_seq');
+
+select setval(
+  'public.order_code_seq',
+  greatest(
+    900000000000000,
+    coalesce((select max(order_code) + 1 from (
+      select order_code from public.orders
+      union all
+      select order_code from public.wallet_topups
+    ) existing_order_codes), 900000000000000)
+  ),
+  false
 );
 
 alter table public.payment_logs add column if not exists topup_id uuid;
@@ -305,7 +329,6 @@ declare
   v_total numeric;
   v_voucher_code text;
   v_order public.orders;
-  v_order_code bigint;
 begin
   if p_quantity < 1 or p_quantity > 20 then
     raise exception 'Số lượng không hợp lệ';
@@ -381,8 +404,6 @@ begin
       updated_at = now()
   where id = p_user_id;
 
-  v_order_code := floor(extract(epoch from clock_timestamp()) * 1000)::bigint + floor(random() * 900 + 100)::bigint;
-
   insert into public.orders (
     user_id,
     customer_name,
@@ -393,7 +414,6 @@ begin
     discount_amount,
     voucher_code,
     total_amount,
-    order_code,
     payment_provider,
     payment_status,
     order_status,
@@ -410,7 +430,6 @@ begin
     v_discount,
     v_voucher_code,
     v_total,
-    v_order_code,
     'BALANCE',
     'PAID',
     'PROCESSING',

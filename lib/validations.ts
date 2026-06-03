@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TOPUP_AMOUNTS } from "@/lib/topup";
 
 export const registerSchema = z.object({
   username: z.string().trim().min(6, "Tài khoản tối thiểu 6 ký tự").regex(/^[a-zA-Z0-9._-]+$/, "Tài khoản chỉ gồm chữ, số, dấu chấm, gạch ngang hoặc gạch dưới"),
@@ -31,7 +32,7 @@ export const balancePurchaseSchema = customerSchema.extend({
 });
 
 export const createTopupPaymentSchema = z.object({
-  amount: z.coerce.number().int().refine((value) => [50000, 100000, 250000, 500000, 1000000, 2000000, 5000000].includes(value), {
+  amount: z.coerce.number().int().refine((value) => TOPUP_AMOUNTS.includes(value as typeof TOPUP_AMOUNTS[number]), {
     message: "Số tiền nạp không hợp lệ"
   })
 });

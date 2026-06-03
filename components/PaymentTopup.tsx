@@ -6,9 +6,8 @@ import { Copy, CreditCard, History, Landmark, QrCode, Wallet, Loader2 } from "lu
 import { toast } from "sonner";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Button } from "@/components/ui/button";
+import { TOPUP_AMOUNTS } from "@/lib/topup";
 import { formatCurrency, formatDate } from "@/lib/utils";
-
-const amounts = [10000, 20000, 50000, 100000, 250000, 500000, 1000000, 2000000, 5000000];
 
 type PayOSPayment = {
   qrCode?: string;
@@ -137,7 +136,7 @@ export function PaymentTopup({ balance, topups }: { balance: number; topups: Top
           <div className="space-y-3">
             <label className="text-sm text-slate-700">Chọn số tiền (VNĐ)</label>
             <div className="grid gap-3 md:grid-cols-3">
-              {amounts.map((value) => (
+              {TOPUP_AMOUNTS.map((value) => (
                 <button
                   key={value}
                   type="button"

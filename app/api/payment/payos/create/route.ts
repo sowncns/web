@@ -33,7 +33,6 @@ export async function POST(request: Request) {
       if (!stock) return NextResponse.json({ error: "Template này chưa có link tải trong kho. Vui lòng liên hệ admin." }, { status: 409 });
     }
     const totalAmount = Number(product.price) * quantity;
-    const orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 90 + 10)}`.slice(0, 15));
     const { data: order, error: orderError } = await supabaseAdmin.from("orders").insert({
       user_id: user?.id || null,
       customer_name: body.customerName,
@@ -43,12 +42,12 @@ export async function POST(request: Request) {
       subtotal_amount: totalAmount,
       discount_amount: 0,
       total_amount: totalAmount,
-      order_code: orderCode,
       note: body.note,
       payment_status: "PENDING",
       order_status: "PENDING"
     }).select("*").single();
     if (orderError) throw new Error(orderError.message);
+    const orderCode = Number(order.order_code);
     await bumpCacheVersion("admin-dashboard");
     const appUrl = getAppUrl(request);
     const paymentLink = await payOS.paymentRequests.create({
