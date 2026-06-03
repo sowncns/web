@@ -181,6 +181,17 @@ select setval(
   false
 );
 
+create or replace function public.next_order_code()
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return nextval('public.order_code_seq');
+end;
+$$;
+
 alter table public.payment_logs add column if not exists topup_id uuid;
 
 do $$
