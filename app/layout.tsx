@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
         <main className="app-main">{children}</main>
         <Footer />
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" duration={1000} />
       </body>
     </html>
   );

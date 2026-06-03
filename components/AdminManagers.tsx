@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,19 @@ async function send(url: string, method: string, body: unknown) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Thao tác thất bại");
   return data;
+}
+
+function LoadingIcon() {
+  return <Loader2 className="h-4 w-4 animate-spin" />;
+}
+
+function SubmitButton({ children, loadingLabel = "Đang lưu", variant, size, className }: Pick<ButtonProps, "variant" | "size" | "className"> & { children: ReactNode; loadingLabel?: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant={variant} size={size} className={className} disabled={pending}>
+      {pending ? <><LoadingIcon /> {loadingLabel}</> : children}
+    </Button>
+  );
 }
 
 function createSlug(value: string) {
@@ -113,7 +127,7 @@ export function ProductForm({ categories, product }: { categories: any[]; produc
       <div className="space-y-1"><Label>{isTemplate ? "License sử dụng" : "Bảo hành"}</Label><Textarea name="warranty_policy" defaultValue={product?.warranty_policy} /></div>
       <div className="space-y-1"><Label>Hướng dẫn nhận hàng / tải file</Label><Textarea name="delivery_guide" defaultValue={product?.delivery_guide} /></div>
       <label className="flex items-center gap-2 text-sm"><input name="is_active" type="checkbox" defaultChecked={product?.is_active ?? true} /> Đang bán</label>
-      <Button>{product ? "Cập nhật" : "Thêm sản phẩm"}</Button>
+      <SubmitButton loadingLabel={product ? "Đang cập nhật" : "Đang thêm"}>{product ? "Cập nhật" : "Thêm sản phẩm"}</SubmitButton>
     </form>
   );
 }
@@ -141,7 +155,7 @@ export function CategoryForm({ category }: { category?: any }) {
         <option value="ACCOUNT">Tài khoản</option>
         <option value="TEMPLATE">Template</option>
       </select>
-      <Button>{category ? "Cập nhật" : "Thêm"}</Button>
+      <SubmitButton loadingLabel={category ? "Đang cập nhật" : "Đang thêm"}>{category ? "Cập nhật" : "Thêm"}</SubmitButton>
     </form>
   );
 }
@@ -167,13 +181,17 @@ export function VoucherForm({ voucher }: { voucher?: any }) {
         is_active: formData.get("is_active") === "on"
       });
       toast.success("Đã lưu voucher");
+      if (!voucher) {
+        const form = document.querySelector<HTMLFormElement>("[data-voucher-create-form='true']");
+        form?.reset();
+      }
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không lưu được voucher");
     }
   }
   return (
-    <form action={submit} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
+    <form action={submit} data-voucher-create-form={!voucher ? "true" : undefined} className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
       <div className="space-y-1">
         <Label>Mã voucher</Label>
         <Input name="code" defaultValue={voucher?.code} placeholder="SALE10" required />
@@ -213,7 +231,7 @@ export function VoucherForm({ voucher }: { voucher?: any }) {
         <input name="is_active" type="checkbox" defaultChecked={voucher?.is_active ?? true} /> Đang bật
       </label>
       <div className="md:col-span-2 xl:col-span-3">
-        <Button>{voucher ? "Cập nhật voucher" : "Thêm voucher"}</Button>
+        <SubmitButton loadingLabel={voucher ? "Đang cập nhật" : "Đang thêm"}>{voucher ? "Cập nhật voucher" : "Thêm voucher"}</SubmitButton>
       </div>
     </form>
   );
@@ -222,19 +240,25 @@ export function VoucherForm({ voucher }: { voucher?: any }) {
 export function VoucherRowActions({ voucher }: { voucher: any }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   async function toggleActive() {
+    setToggling(true);
     try {
       await send(`/api/admin/vouchers/${voucher.id}`, "PATCH", { is_active: !voucher.is_active });
       toast.success(voucher.is_active ? "Đã tắt voucher" : "Đã bật voucher");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không cập nhật được voucher");
+    } finally {
+      setToggling(false);
     }
   }
 
   async function remove() {
     if (!confirm("Xóa voucher này?")) return;
+    setRemoving(true);
     try {
       await fetch(`/api/admin/vouchers/${voucher.id}`, { method: "DELETE" }).then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error || "Không xóa được voucher");
@@ -243,6 +267,8 @@ export function VoucherRowActions({ voucher }: { voucher: any }) {
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không xóa được voucher");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -253,13 +279,13 @@ export function VoucherRowActions({ voucher }: { voucher: any }) {
           <Pencil className="h-4 w-4" />
           {open ? "Đóng" : "Sửa"}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={toggleActive}>
-          {voucher.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {voucher.is_active ? "Tắt" : "Bật"}
+        <Button type="button" variant="outline" size="sm" onClick={toggleActive} disabled={toggling || removing}>
+          {toggling ? <LoadingIcon /> : voucher.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {toggling ? "Đang xử lý" : voucher.is_active ? "Tắt" : "Bật"}
         </Button>
-        <Button type="button" variant="destructive" size="sm" onClick={remove}>
-          <Trash2 className="h-4 w-4" />
-          Xóa
+        <Button type="button" variant="destructive" size="sm" onClick={remove} disabled={toggling || removing}>
+          {removing ? <LoadingIcon /> : <Trash2 className="h-4 w-4" />}
+          {removing ? "Đang xóa" : "Xóa"}
         </Button>
       </div>
       {open ? <VoucherForm voucher={voucher} /> : null}
@@ -295,7 +321,7 @@ export function StockForm({ products }: { products: any[] }) {
       <Input name="duration" placeholder="Thời hạn" />
       <div className="grid gap-3 md:grid-cols-3"><Input name="username" placeholder="username/email" /><Input name="password" placeholder="password" /><Input name="note" placeholder="ghi chú" /></div>
       <Textarea name="lines" placeholder="Import nhiều dòng: username|password|note hoặc link tải|mật khẩu giải nén|hướng dẫn" />
-      <Button>Thêm vào kho</Button>
+      <SubmitButton loadingLabel="Đang thêm">Thêm vào kho</SubmitButton>
     </form>
   );
 }
@@ -303,6 +329,7 @@ export function StockForm({ products }: { products: any[] }) {
 export function StockRowActions({ stock, products }: { stock: any; products: any[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   async function update(formData: FormData) {
     try {
@@ -324,6 +351,7 @@ export function StockRowActions({ stock, products }: { stock: any; products: any
 
   async function remove() {
     if (!confirm("Xóa dòng kho này? Thao tác này không thể hoàn tác.")) return;
+    setRemoving(true);
     try {
       await fetch(`/api/admin/stocks/${stock.id}`, { method: "DELETE" }).then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
@@ -332,6 +360,8 @@ export function StockRowActions({ stock, products }: { stock: any; products: any
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không xóa được");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -342,9 +372,9 @@ export function StockRowActions({ stock, products }: { stock: any; products: any
           <Pencil className="h-4 w-4" />
           {open ? "Đóng" : "Sửa"}
         </Button>
-        <Button type="button" variant="destructive" size="sm" onClick={remove}>
-          <Trash2 className="h-4 w-4" />
-          Xóa
+        <Button type="button" variant="destructive" size="sm" onClick={remove} disabled={removing}>
+          {removing ? <LoadingIcon /> : <Trash2 className="h-4 w-4" />}
+          {removing ? "Đang xóa" : "Xóa"}
         </Button>
       </div>
       {open ? (
@@ -364,7 +394,7 @@ export function StockRowActions({ stock, products }: { stock: any; products: any
               <option value="USED">Đã dùng</option>
               <option value="DISABLED">Đã tắt</option>
             </select>
-            <Button size="sm">Lưu thay đổi</Button>
+            <SubmitButton size="sm" loadingLabel="Đang lưu">Lưu thay đổi</SubmitButton>
           </div>
         </form>
       ) : null}
@@ -374,18 +404,22 @@ export function StockRowActions({ stock, products }: { stock: any; products: any
 
 export function OrderAdminActions({ orderId, quantity, productType = "ACCOUNT" }: { orderId: string; quantity: number; productType?: string }) {
   const router = useRouter();
+  const [autoDelivering, setAutoDelivering] = useState(false);
   const isTemplate = productType === "TEMPLATE";
   const itemLabel = isTemplate ? "template" : "tài khoản";
   const neededQuantity = isTemplate ? 1 : quantity;
   const lineHelp = isTemplate ? "Dạng: link tải|mật khẩu giải nén|hướng dẫn/license." : "Dạng: username|password|ghi chú.";
   const exampleLines = Array.from({ length: Math.min(neededQuantity, 3) }, (_, index) => isTemplate ? `https://drive.google.com/file/d/template-${index + 1}|mat-khau-zip|Huong dan cai dat va license` : `username${index + 1}|password${index + 1}`).join("\n");
   async function autoDeliver() {
+    setAutoDelivering(true);
     try {
       await send(`/api/admin/orders/${orderId}`, "PATCH", { action: "auto_delivery" });
       toast.success(`Đã cấp ${itemLabel} tự động`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không cấp được");
+    } finally {
+      setAutoDelivering(false);
     }
   }
   async function manual(formData: FormData) {
@@ -402,14 +436,16 @@ export function OrderAdminActions({ orderId, quantity, productType = "ACCOUNT" }
       <div className="rounded-md border border-sky-100 bg-sky-50 p-3 text-sm font-semibold text-sky-900">
         Đơn này cần cấp {neededQuantity} {itemLabel}. Khi nhập thủ công, vui lòng nhập đúng {neededQuantity} dòng.
       </div>
-      <Button onClick={autoDeliver}>Cấp {itemLabel} tự động</Button>
+      <Button onClick={autoDeliver} disabled={autoDelivering}>
+        {autoDelivering ? <><LoadingIcon /> Đang cấp</> : `Cấp ${itemLabel} tự động`}
+      </Button>
       <form action={manual} className="space-y-3">
         <div className="space-y-1">
           <Label>Cấp thủ công nhiều {itemLabel}</Label>
           <Textarea name="lines" rows={Math.max(4, Math.min(neededQuantity + 1, 10))} placeholder={`Cần ${neededQuantity} dòng, mỗi dòng một ${itemLabel}:\n${exampleLines}${neededQuantity > 3 ? "\n..." : ""}`} required />
           <p className="text-xs text-muted-foreground">{lineHelp} Nếu bỏ trống ghi chú, hệ thống sẽ dùng ghi chú mặc định.</p>
         </div>
-        <Button variant="secondary">Cấp {itemLabel} thủ công</Button>
+        <SubmitButton variant="secondary" loadingLabel="Đang cấp">Cấp {itemLabel} thủ công</SubmitButton>
       </form>
     </div>
   );
@@ -436,26 +472,32 @@ export function UserPatchForm({ user }: { user: any }) {
         <option value="ACTIVE">Hoạt động</option>
         <option value="BANNED">Bị khóa</option>
       </select>
-      <Button size="sm">Lưu</Button>
+      <SubmitButton size="sm" loadingLabel="Đang lưu">Lưu</SubmitButton>
     </form>
   );
 }
 
 export function ProductRowActions({ product }: { product: any }) {
   const router = useRouter();
+  const [toggling, setToggling] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   async function toggleActive() {
+    setToggling(true);
     try {
       await send(`/api/admin/products/${product.id}`, "PATCH", { is_active: !product.is_active });
       toast.success(product.is_active ? "Đã ẩn sản phẩm" : "Đã hiện sản phẩm");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không cập nhật được");
+    } finally {
+      setToggling(false);
     }
   }
 
   async function remove() {
     if (!confirm("Xóa sản phẩm này? Sản phẩm sẽ bị xóa khỏi hệ thống.")) return;
+    setRemoving(true);
     try {
       await fetch(`/api/admin/products/${product.id}`, { method: "DELETE" }).then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
@@ -464,18 +506,20 @@ export function ProductRowActions({ product }: { product: any }) {
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không xóa được");
+    } finally {
+      setRemoving(false);
     }
   }
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={toggleActive}>
-        {product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        {product.is_active ? "Ẩn sản phẩm" : "Hiện sản phẩm"}
+      <Button type="button" variant="outline" size="sm" onClick={toggleActive} disabled={toggling || removing}>
+        {toggling ? <LoadingIcon /> : product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        {toggling ? "Đang xử lý" : product.is_active ? "Ẩn sản phẩm" : "Hiện sản phẩm"}
       </Button>
-      <Button type="button" variant="destructive" size="sm" onClick={remove}>
-        <Trash2 className="h-4 w-4" />
-        Xóa
+      <Button type="button" variant="destructive" size="sm" onClick={remove} disabled={toggling || removing}>
+        {removing ? <LoadingIcon /> : <Trash2 className="h-4 w-4" />}
+        {removing ? "Đang xóa" : "Xóa"}
       </Button>
     </div>
   );
@@ -500,6 +544,7 @@ export function ProductUpdatePanel({ product, categories }: { product: any; cate
 
 export function CategoryRowActions({ category }: { category: any }) {
   const router = useRouter();
+  const [removing, setRemoving] = useState(false);
 
   async function update(formData: FormData) {
     try {
@@ -517,6 +562,7 @@ export function CategoryRowActions({ category }: { category: any }) {
 
   async function remove() {
     if (!confirm("Xóa danh mục này? Sản phẩm thuộc danh mục sẽ được bỏ danh mục.")) return;
+    setRemoving(true);
     try {
       await fetch(`/api/admin/categories/${category.id}`, { method: "DELETE" }).then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error || "Không xóa được");
@@ -525,6 +571,8 @@ export function CategoryRowActions({ category }: { category: any }) {
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không xóa được");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -537,11 +585,11 @@ export function CategoryRowActions({ category }: { category: any }) {
           <option value="ACCOUNT">Tài khoản</option>
           <option value="TEMPLATE">Template</option>
         </select>
-        <Button size="sm"><Pencil className="h-4 w-4" /> Cập nhật</Button>
+        <SubmitButton size="sm" loadingLabel="Đang cập nhật"><Pencil className="h-4 w-4" /> Cập nhật</SubmitButton>
       </form>
-      <Button type="button" variant="destructive" size="sm" onClick={remove}>
-        <Trash2 className="h-4 w-4" />
-        Xóa danh mục
+      <Button type="button" variant="destructive" size="sm" onClick={remove} disabled={removing}>
+        {removing ? <LoadingIcon /> : <Trash2 className="h-4 w-4" />}
+        {removing ? "Đang xóa" : "Xóa danh mục"}
       </Button>
     </div>
   );

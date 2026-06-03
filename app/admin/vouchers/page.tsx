@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+export const revalidate = 0;
+
 function formatDiscount(voucher: any) {
   return voucher.discount_type === "PERCENT" ? `${Number(voucher.discount_value)}%` : formatCurrency(voucher.discount_value);
 }

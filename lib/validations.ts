@@ -55,7 +55,7 @@ export const categorySchema = z.object({
   category_type: z.enum(["ACCOUNT", "TEMPLATE"]).default("ACCOUNT")
 });
 
-export const voucherSchema = z.object({
+const voucherBaseSchema = z.object({
   code: z.string().trim().min(2).max(50).transform((value) => value.toUpperCase()),
   description: z.string().nullable().optional(),
   discount_type: z.enum(["PERCENT", "FIXED"]),
@@ -65,7 +65,14 @@ export const voucherSchema = z.object({
   starts_at: z.string().nullable().optional().or(z.literal("")),
   expires_at: z.string().nullable().optional().or(z.literal("")),
   is_active: z.boolean().default(true)
-}).refine((data) => data.discount_type !== "PERCENT" || data.discount_value <= 100, {
+});
+
+export const voucherSchema = voucherBaseSchema.refine((data) => data.discount_type !== "PERCENT" || data.discount_value <= 100, {
+  message: "Voucher giảm theo phần trăm không được vượt quá 100%",
+  path: ["discount_value"]
+});
+
+export const voucherPatchSchema = voucherBaseSchema.partial().refine((data) => data.discount_type !== "PERCENT" || data.discount_value === undefined || data.discount_value <= 100, {
   message: "Voucher giảm theo phần trăm không được vượt quá 100%",
   path: ["discount_value"]
 });

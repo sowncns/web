@@ -10,6 +10,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const orderSelect = "id,order_code,customer_email,total_amount,payment_status,order_status,created_at,products(name,categories(category_type))";
+const prioritizedOrderGroups = [["PROCESSING"], ["PENDING"], ["COMPLETED", "CANCELLED"]];
+
 export default async function AdminOrdersPage({ searchParams }: { searchParams: { orderCode?: string; page?: string } }) {
   noStore();
   const page = Math.max(1, Number(searchParams.page || 1));
@@ -17,14 +20,54 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   const orderCode = searchParams.orderCode?.trim();
-  let query = supabaseAdmin
-    .from("orders")
-    .select("id,order_code,customer_email,total_amount,payment_status,order_status,created_at,products(name,categories(category_type))", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
-  if (orderCode) query = query.eq("order_code", Number(orderCode));
-  const { data: ordersData, count } = await query;
-  const orders = ordersData ?? [];
+  let count = 0;
+  let orders: any[] = [];
+
+  if (orderCode) {
+    const { data: ordersData, count: exactCount } = await supabaseAdmin
+      .from("orders")
+      .select(orderSelect, { count: "exact" })
+      .eq("order_code", Number(orderCode))
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    count = exactCount ?? 0;
+    orders = ordersData ?? [];
+  } else {
+    const groupCounts = await Promise.all(prioritizedOrderGroups.map(async (statuses) => {
+      const { count: exactCount } = await supabaseAdmin
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .in("order_status", statuses);
+      return exactCount ?? 0;
+    }));
+
+    count = groupCounts.reduce((sum, groupCount) => sum + groupCount, 0);
+    let groupOffset = from;
+    let remaining = pageSize;
+
+    for (const [index, statuses] of prioritizedOrderGroups.entries()) {
+      const groupCount = groupCounts[index] ?? 0;
+      if (!remaining) break;
+      if (groupOffset >= groupCount) {
+        groupOffset -= groupCount;
+        continue;
+      }
+
+      const groupFrom = groupOffset;
+      const groupTo = Math.min(groupCount - 1, groupOffset + remaining - 1);
+      const { data } = await supabaseAdmin
+        .from("orders")
+        .select(orderSelect)
+        .in("order_status", statuses)
+        .order("created_at", { ascending: false })
+        .range(groupFrom, groupTo);
+
+      orders = [...orders, ...(data ?? [])];
+      remaining -= groupTo - groupFrom + 1;
+      groupOffset = 0;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

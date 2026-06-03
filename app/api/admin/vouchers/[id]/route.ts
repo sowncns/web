@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { voucherSchema } from "@/lib/validations";
+import { voucherPatchSchema } from "@/lib/validations";
 
-function normalizeVoucher(body: Partial<ReturnType<typeof voucherSchema.parse>>) {
+function normalizeVoucher(body: ReturnType<typeof voucherPatchSchema.parse>) {
   const data: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const [key, value] of Object.entries(body)) {
     if (value === undefined) continue;
@@ -21,7 +21,7 @@ function normalizeVoucher(body: Partial<ReturnType<typeof voucherSchema.parse>>)
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const admin = await isAdminRequest();
   if (!admin.ok) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
-  const body = normalizeVoucher(voucherSchema.partial().parse(await request.json()));
+  const body = normalizeVoucher(voucherPatchSchema.parse(await request.json()));
   const { data, error } = await supabaseAdmin.from("vouchers").update(body).eq("id", params.id).select("*").single();
   if (error && error.code === "23505") return NextResponse.json({ error: "Mã voucher đã tồn tại" }, { status: 400 });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
